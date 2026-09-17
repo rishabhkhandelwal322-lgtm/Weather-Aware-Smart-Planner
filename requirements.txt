@@ -1,0 +1,9 @@
+requests
+streamlit
+pandas
+scikit-learn
+matplotlib
+plotly
+plyer
+python-dotenv
+pytest
