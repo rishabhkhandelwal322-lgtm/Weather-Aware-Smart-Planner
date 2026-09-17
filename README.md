@@ -1,3 +1,4 @@
+
 # Weather-Aware Smart Planner
 
 ## Overview
@@ -95,3 +96,6 @@ _(Add screenshots of the dashboard, task list, and analytics view here once the 
 
 ## License
 This project was built as part of the VITyarthi "Build Your Own Project" coursework submission.
+=======
+# Weather-Aware-Smart-Planner
+
