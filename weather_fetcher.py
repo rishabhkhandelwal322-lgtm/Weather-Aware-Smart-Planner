@@ -10,6 +10,13 @@ app can reason about "days" rather than 3-hour slices.
 
 Results are cached in the local database via storage.py, so repeated
 calls for the same location/date within a day don't re-hit the API.
+
+Usage:
+    python weather_fetcher.py --location "Ashta,IN"                          # fetch from API
+    python weather_fetcher.py --location "Ashta,IN" --manual DATE TEMP_C CONDITION WIND_KPH RAIN_PROB
+    # e.g.:
+    python weather_fetcher.py --location "Ashta,IN" --manual 2026-09-20 30 Rain 15 0.7
+    # --manual field order is fixed: DATE, TEMP_C, CONDITION, WIND_KPH, RAIN_PROB
 """
 
 import os
@@ -150,13 +157,82 @@ def get_forecast_for_date(location, target_date, use_cache=True):
     return None
 
 
-if __name__ == "__main__":
-    import sys
-    loc = sys.argv[1] if len(sys.argv) > 1 else "Ashta,IN"
+# ------------------------------------------------------- manual entry ----
+
+VALID_CONDITIONS = ("Clear", "Clouds", "Rain", "Thunderstorm", "Snow", "Mist", "Fog")
+
+
+def add_manual_forecast(location, forecast_date, temperature_c, condition,
+                         wind_speed_kph, rain_probability):
+    """
+    Manually insert/overwrite a cached forecast for a given location and
+    date, bypassing the API entirely. Useful for testing, filling gaps
+    the free-tier API doesn't cover, or working offline.
+
+    rain_probability must be 0.0-1.0. Raises ValueError on bad input.
+    """
     try:
-        print("Current:", get_current_weather(loc))
-        print("\n5-day forecast:")
-        for day in get_5day_forecast(loc):
-            print(" ", day)
-    except WeatherFetchError as e:
-        print(f"Error: {e}")
+        datetime.strptime(forecast_date, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError(f"Invalid date '{forecast_date}'. Use YYYY-MM-DD format.")
+
+    if condition not in VALID_CONDITIONS:
+        raise ValueError(f"condition must be one of {VALID_CONDITIONS}, got '{condition}'")
+
+    if not (0.0 <= rain_probability <= 1.0):
+        raise ValueError("rain_probability must be between 0.0 and 1.0")
+
+    storage.save_forecast(
+        location=location,
+        forecast_date=forecast_date,
+        temperature_c=temperature_c,
+        condition=condition,
+        wind_speed_kph=wind_speed_kph,
+        rain_probability=rain_probability,
+    )
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Fetch or manually enter weather forecast data.")
+    parser.add_argument("--location", default="Ashta,IN", help="Location, e.g. 'Ashta,IN'")
+    parser.add_argument(
+        "--manual", nargs=5,
+        metavar=("DATE", "TEMP_C", "CONDITION", "WIND_KPH", "RAIN_PROB"),
+        help=("Manually add/overwrite a forecast instead of calling the API. "
+              "Fields must be given in this exact order: "
+              "DATE (YYYY-MM-DD), TEMP_C (number), CONDITION (see choices below), "
+              "WIND_KPH (number), RAIN_PROB (0.0-1.0). "
+              "Example: --manual 2026-09-20 30 Rain 15 0.7  "
+              f"(condition must be one of {VALID_CONDITIONS})"),
+    )
+    args = parser.parse_args()
+
+    if args.manual:
+        date, temp, condition, wind, rain = args.manual
+        try:
+            add_manual_forecast(
+                location=args.location,
+                forecast_date=date,
+                temperature_c=float(temp),
+                condition=condition,
+                wind_speed_kph=float(wind),
+                rain_probability=float(rain),
+            )
+            print(f"Saved manual forecast for {args.location} on {date}.")
+            print(
+                "Stored as (location, date, temp_c, condition, wind_kph, rain_probability):\n"
+                f"  ({args.location!r}, {date!r}, {float(temp)}, {condition!r}, "
+                f"{float(wind)}, {float(rain)})"
+            )
+        except ValueError as e:
+            print(f"Error: {e}")
+    else:
+        try:
+            print("Current:", get_current_weather(args.location))
+            print("\n5-day forecast:")
+            for day in get_5day_forecast(args.location):
+                print(" ", day)
+        except WeatherFetchError as e:
+            print(f"Error: {e}")
