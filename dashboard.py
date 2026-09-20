@@ -243,20 +243,3 @@ with tab_log:
 
 
 
-import streamlit as st
-import requests
-
-API_URL = "http://127.0.0.1:8000"
-
-st.title("Weather Planner Dashboard")
-
-# Check Backend Connection
-try:
-    response = requests.get(f"{API_URL}/", timeout=3)
-    if response.status_code == 200:
-        st.sidebar.success("Connected to FastAPI Backend")
-    else:
-        st.sidebar.warning(f"Backend returned status code: {response.status_code}")
-except requests.exceptions.RequestException as e:
-    st.sidebar.error("Could not connect to FastAPI backend")
-    st.sidebar.write(e)
