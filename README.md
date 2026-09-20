@@ -85,6 +85,9 @@ weather_planner/
    streamlit run dashboard.py
    ```
 
+## Module Reference / CLI Usage Each module can also be run standalone from the command line: | Command | What it does | |---|---| | `python task_manager.py add "Task" outdoor --priority high --date 2026-09-25` | Add a task via CLI | | `python task_manager.py list` | List tasks via CLI | | `python weather_fetcher.py --location "Ashta,IN"` | Fetch live 5-day forecast | | `python weather_fetcher.py --location "Ashta,IN" --manual 2026-09-20 30 Rain 15 0.7` | Manually add/overwrite a forecast | | `python planner.py "Ashta,IN"` | Run the rescheduling engine once | | `python predictor.py --train` | Retrain the ML model on fresh synthetic data | | `python predictor.py --predict 28 0.2 12` | Test the ML model directly (temp, rain_prob, wind) | | `python analytics.py --location "Ashta,IN"` | Regenerate the chart PNGs in `reports/` | | `python notifier.py --test` | Send a test notification | | `python seed_demo_data.py` | Populate sample tasks/forecasts for demo purposes | | `python -m pytest tests/ -v` | Run the full test suite |
+
+
 ## Testing
 Run the full test suite with:
 ```bash
