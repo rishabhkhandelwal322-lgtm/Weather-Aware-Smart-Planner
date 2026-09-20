@@ -29,8 +29,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-DATA_DIR = Path(__file__).parent / "data"
-MODEL_DIR = Path(__file__).parent / "models"
+DATA_DIR = Path(__file__).parent.parent / "data"
+MODEL_DIR = Path(__file__).parent.parent / "models"
 DATA_PATH = DATA_DIR / "historical_weather.csv"
 MODEL_PATH = MODEL_DIR / "weather_model.pkl"
 

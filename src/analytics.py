@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 
 import storage
 
-REPORTS_DIR = Path(__file__).parent / "reports"
+REPORTS_DIR = Path(__file__).parent.parent / "reports"
 
 
 def get_completion_stats():

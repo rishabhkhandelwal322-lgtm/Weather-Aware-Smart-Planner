@@ -16,9 +16,11 @@ from reportlab.platypus import (
     ListFlowable, ListItem, KeepTogether
 )
 
-DIAG = "/home/claude/weather_planner/diagrams"
-CHARTS = "/home/claude/weather_planner/reports"
-OUT = "/home/claude/weather_planner/Weather_Aware_Smart_Planner_Report.pdf"
+from pathlib import Path
+ROOT = Path(__file__).parent.parent
+DIAG = str(ROOT / "diagrams")
+CHARTS = str(ROOT / "reports")
+OUT = str(ROOT / "Weather_Aware_Smart_Planner_Report.pdf")
 
 styles = getSampleStyleSheet()
 

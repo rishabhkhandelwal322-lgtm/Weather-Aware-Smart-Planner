@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path(__file__).parent / "data" / "planner.db"
+DB_PATH = Path(__file__).parent.parent / "data" / "planner.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tasks (

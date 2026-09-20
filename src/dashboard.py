@@ -1,10 +1,3 @@
-import warnings
-
-# Suppress all sklearn model version warnings without importing sklearn directly
-warnings.filterwarnings("ignore", message=".*InconsistentVersionWarning.*")
-warnings.filterwarnings("ignore", message=".*Trying to unpickle estimator.*")
-
-
 """
 dashboard.py
 -------------
@@ -239,7 +232,3 @@ with tab_log:
     else:
         for log in logs:
             st.write(f"🕒 `{log['timestamp']}` — **{log['action']}** — {log['details']}")
-
-
-
-
