@@ -95,7 +95,7 @@ pytest tests/
 _(Add screenshots of the dashboard, task list, and analytics view here once the UI is built.)_
 
 ## License
-This project was built as part of the VITyarthi "Build Your Own Project" coursework submission.
+This project was built as a part of VITYARTHI project submission.
 =======
 # Weather-Aware-Smart-Planner
 
