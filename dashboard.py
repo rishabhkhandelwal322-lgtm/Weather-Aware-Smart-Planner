@@ -1,3 +1,10 @@
+import warnings
+
+# Suppress all sklearn model version warnings without importing sklearn directly
+warnings.filterwarnings("ignore", message=".*InconsistentVersionWarning.*")
+warnings.filterwarnings("ignore", message=".*Trying to unpickle estimator.*")
+
+
 """
 dashboard.py
 -------------
@@ -232,3 +239,24 @@ with tab_log:
     else:
         for log in logs:
             st.write(f"🕒 `{log['timestamp']}` — **{log['action']}** — {log['details']}")
+
+
+
+
+import streamlit as st
+import requests
+
+API_URL = "http://127.0.0.1:8000"
+
+st.title("Weather Planner Dashboard")
+
+# Check Backend Connection
+try:
+    response = requests.get(f"{API_URL}/", timeout=3)
+    if response.status_code == 200:
+        st.sidebar.success("Connected to FastAPI Backend")
+    else:
+        st.sidebar.warning(f"Backend returned status code: {response.status_code}")
+except requests.exceptions.RequestException as e:
+    st.sidebar.error("Could not connect to FastAPI backend")
+    st.sidebar.write(e)
