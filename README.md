@@ -50,6 +50,9 @@ weather_planner/
 └── statement.md
 ```
 
+ ## Easy Mode (No Coding Knowledge Required) For anyone who isn't comfortable with command-line flags, there's a simple guided menu that walks you through every feature step by step: ```bash python run_interactive.py ``` You'll see a numbered menu (1-12) covering adding/viewing/completing tasks, checking the weather, running the planner, getting ML predictions, viewing analytics, and testing notifications. Just type a number and answer the plain-English prompts — no flags or code required. Every option has a sensible default shown in brackets, and invalid input is handled gracefully with a clear error message rather than a crash.
+
+
 ## Installation & Setup
 
 1. Clone the repository
