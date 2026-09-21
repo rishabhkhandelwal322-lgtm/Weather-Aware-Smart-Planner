@@ -7,3 +7,5 @@ plotly
 plyer
 python-dotenv
 pytest
+termcharts
+rich
