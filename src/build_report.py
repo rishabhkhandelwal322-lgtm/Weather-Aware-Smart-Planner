@@ -65,7 +65,7 @@ story.append(Paragraph("GitHub Repository: github.com/rishabhkhandelwal322-lgtm/
 story.append(PageBreak())
 
 # ============================================================ 2. INTRODUCTION ====
-story.append(Paragraph("2. Introduction", styles["SectionHeading"]))
+story.append(Paragraph("1. Introduction", styles["SectionHeading"]))
 story.append(Paragraph(
     "The Weather-Aware Smart Planner is a Python application designed to help individuals manage "
     "their daily tasks in a way that accounts for real-world weather conditions. Traditional to-do "
@@ -84,7 +84,7 @@ story.append(Paragraph(
     styles["BodyJustify"]))
 
 # ============================================================ 3. PROBLEM STATEMENT ====
-story.append(Paragraph("3. Problem Statement", styles["SectionHeading"]))
+story.append(Paragraph("2. Problem Statement", styles["SectionHeading"]))
 story.append(Paragraph(
     "People frequently plan outdoor tasks — errands, workouts, commutes, events — without factoring in "
     "short-term weather changes, leading to disrupted schedules, wasted time, and missed opportunities "
@@ -102,7 +102,7 @@ story.append(Paragraph(
     styles["BodyJustify"]))
 
 # ============================================================ 4. FUNCTIONAL REQUIREMENTS ====
-story.append(Paragraph("4. Functional Requirements", styles["SectionHeading"]))
+story.append(Paragraph("3. Functional Requirements", styles["SectionHeading"]))
 func_reqs = [
     ("Task Management (CRUD)", "Users can create, view, filter, update, complete, and delete tasks. "
      "Each task is tagged as 'outdoor' or 'indoor', with a priority level, an optional deadline, and a "
@@ -133,7 +133,7 @@ for title, desc in func_reqs:
     story.append(Paragraph(f"<b>{title}:</b> {desc}", styles["BodyJustify"]))
 
 # ============================================================ 5. NON-FUNCTIONAL REQUIREMENTS ====
-story.append(Paragraph("5. Non-Functional Requirements", styles["SectionHeading"]))
+story.append(Paragraph("4. Non-Functional Requirements", styles["SectionHeading"]))
 nf_table_data = [
     ["Requirement", "How It Is Addressed"],
     ["Performance", "Forecast data is cached in SQLite (one row per location/date) so repeated planning "
@@ -175,7 +175,7 @@ story.append(nf_table)
 story.append(PageBreak())
 
 # ============================================================ 6. SYSTEM ARCHITECTURE ====
-story.append(Paragraph("6. System Architecture", styles["SectionHeading"]))
+story.append(Paragraph("5. System Architecture", styles["SectionHeading"]))
 story.append(Paragraph(
     "The system follows a layered architecture. A presentation layer (the Streamlit dashboard, plus a "
     "CLI entry point via task_manager.py) sits above an application logic layer containing the task "
@@ -185,21 +185,21 @@ story.append(Paragraph(
     "the operating system's notification/SMTP facilities.",
     styles["BodyJustify"]))
 story.append(Image(f"{DIAG}/architecture.png", width=16.5*cm, height=16.5*cm*(7.5/11)))
-story.append(Paragraph("Figure 6.1 — System Architecture Diagram", styles["Caption"]))
+story.append(Paragraph("Figure 5.1 — System Architecture Diagram", styles["Caption"]))
 story.append(PageBreak())
 
 # ============================================================ 7. DESIGN DIAGRAMS ====
-story.append(Paragraph("7. Design Diagrams", styles["SectionHeading"]))
+story.append(Paragraph("6. Design Diagrams", styles["SectionHeading"]))
 
-story.append(Paragraph("7.1 Use Case Diagram", styles["SubHeading"]))
+story.append(Paragraph("6.1 Use Case Diagram", styles["SubHeading"]))
 story.append(Paragraph(
     "The single actor (User) interacts with eleven use cases spanning task management, forecast "
     "handling, planning automation, notifications, and analytics.", styles["BodyJustify"]))
 story.append(Image(f"{DIAG}/use_case.png", width=15.5*cm, height=15.5*cm*(8/10)))
-story.append(Paragraph("Figure 7.1 — Use Case Diagram", styles["Caption"]))
+story.append(Paragraph("Figure 6.1 — Use Case Diagram", styles["Caption"]))
 story.append(PageBreak())
 
-story.append(Paragraph("7.2 Workflow / Process Flow Diagram", styles["SubHeading"]))
+story.append(Paragraph("6.2 Workflow / Process Flow Diagram", styles["SubHeading"]))
 story.append(Paragraph(
     "This diagram illustrates the core rescheduling logic executed each time a planning cycle runs: "
     "each outdoor task's scheduled date is checked against the cached forecast, and tasks landing on a "
@@ -207,28 +207,28 @@ story.append(Paragraph(
     "notification sent on success and an unresolved flag raised if no suitable day exists in the window.",
     styles["BodyJustify"]))
 story.append(Image(f"{DIAG}/workflow.png", width=13*cm, height=13*cm*(11.5/9.5)))
-story.append(Paragraph("Figure 7.2 — Planner Rescheduling Workflow", styles["Caption"]))
+story.append(Paragraph("Figure 6.2 — Planner Rescheduling Workflow", styles["Caption"]))
 story.append(PageBreak())
 
-story.append(Paragraph("7.3 Sequence Diagram", styles["SubHeading"]))
+story.append(Paragraph("6.3 Sequence Diagram", styles["SubHeading"]))
 story.append(Paragraph(
     "The sequence diagram below traces a single 'Run Planning Cycle' interaction from the user clicking "
     "the button in the dashboard through to the forecast fetch (with cache check), task evaluation, "
     "rescheduling, and notification dispatch.", styles["BodyJustify"]))
 story.append(Image(f"{DIAG}/sequence.png", width=16.5*cm, height=16.5*cm*(10.6/12)))
-story.append(Paragraph("Figure 7.3 — Sequence Diagram: Run Planning Cycle", styles["Caption"]))
+story.append(Paragraph("Figure 6.3 — Sequence Diagram: Run Planning Cycle", styles["Caption"]))
 story.append(PageBreak())
 
-story.append(Paragraph("7.4 Class / Component Diagram", styles["SubHeading"]))
+story.append(Paragraph("6.4 Class / Component Diagram", styles["SubHeading"]))
 story.append(Paragraph(
     "Each Python module is represented as a UML-style class box showing its key attributes and public "
     "functions, with dependency arrows showing which modules the dashboard orchestrates and how data "
     "flows down to the shared storage layer.", styles["BodyJustify"]))
 story.append(Image(f"{DIAG}/class_diagram.png", width=16.5*cm, height=16.5*cm*(9/13)))
-story.append(Paragraph("Figure 7.4 — Class / Component Diagram", styles["Caption"]))
+story.append(Paragraph("Figure 6.4 — Class / Component Diagram", styles["Caption"]))
 story.append(PageBreak())
 
-story.append(Paragraph("7.5 ER Diagram / Database Schema", styles["SubHeading"]))
+story.append(Paragraph("6.5 ER Diagram / Database Schema", styles["SubHeading"]))
 story.append(Paragraph(
     "The SQLite database consists of three tables: tasks, forecasts, and logs. The logs table has a "
     "formal foreign-key relationship to tasks (one task generates zero or more log entries). The "
@@ -236,11 +236,11 @@ story.append(Paragraph(
     "the application level by matching a task's scheduled_date against a forecast's (location, "
     "forecast_date) pair.", styles["BodyJustify"]))
 story.append(Image(f"{DIAG}/er_diagram.png", width=16.5*cm, height=16.5*cm*(7/11)))
-story.append(Paragraph("Figure 7.5 — Entity-Relationship Diagram", styles["Caption"]))
+story.append(Paragraph("Figure 6.5 — Entity-Relationship Diagram", styles["Caption"]))
 story.append(PageBreak())
 
 # ============================================================ 8. DESIGN DECISIONS ====
-story.append(Paragraph("8. Design Decisions & Rationale", styles["SectionHeading"]))
+story.append(Paragraph("7. Design Decisions & Rationale", styles["SectionHeading"]))
 decisions = [
     ("SQLite over a JSON file or a full DBMS", "SQLite provides real relational structure (enabling the "
      "tasks–logs foreign key and SQL-based filtering/aggregation for analytics) without requiring a "
@@ -271,21 +271,26 @@ for title, desc in decisions:
     story.append(Paragraph(f"<b>{title}:</b> {desc}", styles["BodyJustify"]))
 
 # ============================================================ 9. IMPLEMENTATION DETAILS ====
-story.append(Paragraph("9. Implementation Details", styles["SectionHeading"]))
+story.append(Paragraph("8. Implementation Details", styles["SectionHeading"]))
 story.append(Paragraph(
-    "The project is implemented as nine Python modules plus a Streamlit dashboard, totaling roughly "
-    "1,600 lines of application code excluding tests and generated assets.", styles["BodyJustify"]))
+    "The project is implemented as eleven Python modules under a src/ package, totaling roughly "
+    "2,100 lines of application code excluding tests and generated assets. Source code, tests, and "
+    "generated data/artifacts are kept in separate top-level folders (src/, tests/, data/, models/, "
+    "reports/) following standard Python project conventions.", styles["BodyJustify"]))
 
 impl_table_data = [
     ["Module", "Responsibility", "Key Libraries"],
-    ["storage.py", "SQLite schema, connection management, CRUD for tasks/forecasts/logs", "sqlite3"],
-    ["weather_fetcher.py", "Live API fetch + aggregation, caching, manual forecast entry", "requests, python-dotenv"],
-    ["planner.py", "Rule-based rescheduling engine, good-window lookup", "storage, weather_fetcher"],
-    ["predictor.py", "Synthetic data generation, model training, probability prediction", "scikit-learn, pandas, joblib"],
-    ["task_manager.py", "Input validation, task CRUD wrapper, CLI interface", "argparse"],
-    ["notifier.py", "Desktop and email notifications with graceful fallback", "plyer, smtplib"],
-    ["analytics.py", "Completion-rate stats, weather correlation, chart generation", "matplotlib"],
-    ["dashboard.py", "Streamlit UI tying every module together", "streamlit"],
+    ["src/storage.py", "SQLite schema, connection management, CRUD for tasks/forecasts/logs", "sqlite3"],
+    ["src/weather_fetcher.py", "Live API fetch + aggregation, caching, manual forecast entry", "requests, python-dotenv"],
+    ["src/planner.py", "Rule-based rescheduling engine, good-window lookup", "storage, weather_fetcher"],
+    ["src/predictor.py", "Synthetic data generation, model training, probability prediction", "scikit-learn, pandas, joblib"],
+    ["src/task_manager.py", "Input validation, task CRUD wrapper, CLI interface", "argparse"],
+    ["src/notifier.py", "Desktop and email notifications with graceful fallback", "plyer, smtplib"],
+    ["src/analytics.py", "Completion-rate stats, weather correlation, chart generation", "matplotlib"],
+    ["src/dashboard.py", "Streamlit UI tying every module together (4 tabs)", "streamlit"],
+    ["src/run_interactive.py", "Menu-driven terminal interface for non-technical users; renders "
+     "colored bar/pie charts in-terminal and can pop up chart images in a window", "termcharts, rich, matplotlib"],
+    ["src/seed_demo_data.py", "One-off script to populate realistic sample tasks/forecasts for demos", "storage"],
 ]
 impl_table_data = [
     [Paragraph(f"<b>{row[0]}</b>", styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[0]}</b>", styles["TableHeader"]),
@@ -293,7 +298,7 @@ impl_table_data = [
      Paragraph(row[2], styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[2]}</b>", styles["TableHeader"])]
     for i, row in enumerate(impl_table_data)
 ]
-impl_table = Table(impl_table_data, colWidths=[3.6*cm, 8.6*cm, 3.8*cm])
+impl_table = Table(impl_table_data, colWidths=[4.3*cm, 7.9*cm, 3.8*cm])
 impl_table.setStyle(TableStyle([
     ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2C3E50")),
     ("VALIGN", (0,0), (-1,-1), "TOP"),
@@ -307,7 +312,7 @@ impl_table.setStyle(TableStyle([
 story.append(impl_table)
 story.append(Spacer(1, 12))
 
-story.append(Paragraph("Example: the core rescheduling logic (planner.py)", styles["SubHeading"]))
+story.append(Paragraph("Example: the core rescheduling logic (src/planner.py)", styles["SubHeading"]))
 code_snippet = """def run_planning_cycle(location):
     forecast_days = weather_fetcher.get_5day_forecast(location)
     forecast_by_date = {f["forecast_date"]: f for f in forecast_days}
@@ -324,23 +329,23 @@ story.append(Paragraph(code_snippet.replace("\n", "<br/>").replace(" ", "&nbsp;"
 story.append(PageBreak())
 
 # ============================================================ 10. SCREENSHOTS / RESULTS ====
-story.append(Paragraph("10. Screenshots / Results", styles["SectionHeading"]))
+story.append(Paragraph("9. Screenshots / Results", styles["SectionHeading"]))
 story.append(Paragraph(
     "The following charts are generated by analytics.py from sample task and forecast data, "
     "demonstrating the system's ability to correlate task completion outcomes with weather conditions.",
     styles["BodyJustify"]))
 story.append(Image(f"{CHARTS}/weather_correlation.png", width=13*cm, height=13*cm*(4/6)))
-story.append(Paragraph("Figure 10.1 — Outdoor Task Completion Rate vs Weather Condition. Clear-day "
+story.append(Paragraph("Figure 9.1 — Outdoor Task Completion Rate vs Weather Condition. Clear-day "
                         "completion (83%) substantially exceeds rainy-day completion (33%), demonstrating "
                         "the real-world value of weather-aware rescheduling.", styles["Caption"]))
 story.append(Image(f"{CHARTS}/completion_by_type.png", width=13*cm, height=13*cm*(4/6)))
-story.append(Paragraph("Figure 10.2 — Task Completion Rate: Outdoor vs Indoor Tasks", styles["Caption"]))
+story.append(Paragraph("Figure 9.2 — Task Completion Rate: Outdoor vs Indoor Tasks", styles["Caption"]))
 story.append(Image(f"{CHARTS}/status_breakdown.png", width=10*cm, height=10*cm))
-story.append(Paragraph("Figure 10.3 — Overall Task Status Breakdown", styles["Caption"]))
+story.append(Paragraph("Figure 9.3 — Overall Task Status Breakdown", styles["Caption"]))
 story.append(PageBreak())
 
 # ============================================================ 11. TESTING APPROACH ====
-story.append(Paragraph("11. Testing Approach", styles["SectionHeading"]))
+story.append(Paragraph("10. Testing Approach", styles["SectionHeading"]))
 story.append(Paragraph(
     "Testing combined automated unit tests (in the tests/ directory, run via pytest) with manual "
     "end-to-end verification of each module as it was built:", styles["BodyJustify"]))
@@ -364,13 +369,23 @@ testing_items = [
     "analytics.py and dashboard.py were verified by seeding a realistic sample dataset (seed_demo_data.py) "
     "and confirming the computed statistics matched the seeded data exactly, and that the Streamlit app "
     "served without runtime errors across all four tabs.",
+    "run_interactive.py was tested with simulated input sequences covering every menu option, including "
+    "deliberately invalid input (bad task IDs, non-numeric predictor values, out-of-range menu choices) "
+    "to confirm the friendly error handling never lets an exception escape to the user. A specific "
+    "regression was caught and fixed this way: passing two identical values (e.g. 0% and 0%) to the "
+    "third-party termcharts library triggers a division-by-zero inside that library, so a safe wrapper "
+    "was added to detect degenerate data and fall back to a plain-text bar chart instead of crashing.",
+    "After restructuring the codebase into a src/ package, the full test suite and every standalone "
+    "script were re-run from the project root to confirm all inter-module imports and the data/models/"
+    "reports path references (which are relative to each file's own location) still resolved correctly "
+    "outside of the src/ folder.",
 ]
 story.append(ListFlowable(
     [ListItem(Paragraph(item, styles["BodyJustify"]), leftIndent=12) for item in testing_items],
     bulletType="bullet"))
 
 # ============================================================ 12. CHALLENGES FACED ====
-story.append(Paragraph("12. Challenges Faced", styles["SectionHeading"]))
+story.append(Paragraph("11. Challenges Faced", styles["SectionHeading"]))
 challenges = [
     ("Aggregating 3-hour forecast blocks into daily summaries", "The OpenWeatherMap free tier only "
      "provides 3-hour resolution data, not true daily summaries. This required writing custom "
@@ -387,6 +402,22 @@ challenges = [
     ("Git repository history conflicts", "An initial mismatch between the local repository history and "
      "GitHub's auto-generated default file required resolving a merge conflict on README.md using "
      "`git pull --allow-unrelated-histories` before the first push would succeed."),
+    ("Unrelated template code contaminating the repository", "At one point, GitHub Codespaces auto-"
+     "generated a .devcontainer/devcontainer.json, and an unrelated FastAPI boilerplate (api.py, "
+     "scheduler.py, test_api.py, plus a stray block of code appended directly onto the end of "
+     "dashboard.py) appeared in the repository. This was diagnosed by comparing the deployed error "
+     "traceback against the actual source and cross-checking `git ls-files`, then removed entirely so "
+     "the repository only contains code the project actually uses."),
+    ("Cloud deployment failing where local execution succeeded", "The Streamlit Community Cloud "
+     "deployment initially failed on the Forecast tab because .env (correctly excluded from version "
+     "control) doesn't exist on the cloud server; this was resolved by configuring the API key as a "
+     "Streamlit secret instead, which Streamlit automatically exposes as an environment variable. A "
+     "second cloud-only failure occurred because a brand-new deployment starts with a completely empty "
+     "database: analytics.py's status-breakdown chart function correctly returned None when there was no "
+     "data to plot, but the caller stringified that None into the literal text \"None\" before passing it "
+     "to Streamlit's image-display call, which then tried to open a file named \"None\" and crashed. This "
+     "was fixed by preserving the real None value through the return chain and having the dashboard check "
+     "for it explicitly before attempting to render an image."),
 ]
 for title, desc in challenges:
     story.append(Paragraph(f"<b>{title}:</b> {desc}", styles["BodyJustify"]))
@@ -394,7 +425,7 @@ for title, desc in challenges:
 story.append(PageBreak())
 
 # ============================================================ 13. LEARNINGS ====
-story.append(Paragraph("13. Learnings & Key Takeaways", styles["SectionHeading"]))
+story.append(Paragraph("12. Learnings & Key Takeaways", styles["SectionHeading"]))
 learnings = [
     "Designing a clean separation between a rule-based system and a machine learning layer clarified "
     "when each approach is appropriate: rules for deterministic, explainable decisions; ML for a "
@@ -415,7 +446,7 @@ story.append(ListFlowable(
     bulletType="bullet"))
 
 # ============================================================ 14. FUTURE ENHANCEMENTS ====
-story.append(Paragraph("14. Future Enhancements", styles["SectionHeading"]))
+story.append(Paragraph("13. Future Enhancements", styles["SectionHeading"]))
 future = [
     "Multi-user support with authentication, allowing the planner to be deployed as a shared service.",
     "Integration with real historical weather archives (e.g. Open-Meteo's historical API) to replace "
@@ -431,7 +462,7 @@ story.append(ListFlowable(
     bulletType="bullet"))
 
 # ============================================================ 15. REFERENCES ====
-story.append(Paragraph("15. References", styles["SectionHeading"]))
+story.append(Paragraph("14. References", styles["SectionHeading"]))
 references = [
     "OpenWeatherMap API Documentation — https://openweathermap.org/api",
     "Streamlit Documentation — https://docs.streamlit.io",
