@@ -189,18 +189,24 @@ def plot_status_breakdown(save_path=None):
 def generate_full_report(location):
     """
     Generate all analytics charts and return a summary dict with
-    the stats and the paths to each generated chart image.
+    the stats and the paths to each generated chart image. A chart
+    path is None if there wasn't enough data to plot it (e.g. no
+    tasks yet) -- callers must check for None before using a path.
     """
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    completion_chart = plot_completion_by_type()
+    weather_chart = plot_weather_correlation(location)
+    status_chart = plot_status_breakdown()
 
     return {
         "overall_stats": get_completion_stats(),
         "by_type": get_completion_by_task_type(),
         "weather_correlation": get_weather_completion_correlation(location),
         "charts": {
-            "completion_by_type": str(plot_completion_by_type()),
-            "weather_correlation": str(plot_weather_correlation(location)),
-            "status_breakdown": str(plot_status_breakdown()),
+            "completion_by_type": str(completion_chart) if completion_chart else None,
+            "weather_correlation": str(weather_chart) if weather_chart else None,
+            "status_breakdown": str(status_chart) if status_chart else None,
         },
     }
 

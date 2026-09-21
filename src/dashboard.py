@@ -214,11 +214,20 @@ with tab_analytics:
 
         c1, c2 = st.columns(2)
         with c1:
-            st.image(report["charts"]["completion_by_type"], use_container_width=True)
+            if report["charts"]["completion_by_type"]:
+                st.image(report["charts"]["completion_by_type"], use_container_width=True)
+            else:
+                st.info("No task data yet to chart.")
         with c2:
-            st.image(report["charts"]["weather_correlation"], use_container_width=True)
+            if report["charts"]["weather_correlation"]:
+                st.image(report["charts"]["weather_correlation"], use_container_width=True)
+            else:
+                st.info("No weather-correlated task data yet to chart.")
 
-        st.image(report["charts"]["status_breakdown"], width=400)
+        if report["charts"]["status_breakdown"]:
+            st.image(report["charts"]["status_breakdown"], width=400)
+        else:
+            st.info("No completed/pending/rescheduled/cancelled tasks yet to chart status breakdown.")
 
 
 # ------------------------------------------------------ Activity Log tab ----
