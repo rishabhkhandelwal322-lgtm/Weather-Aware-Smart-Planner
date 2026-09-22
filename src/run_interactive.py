@@ -472,18 +472,7 @@ def correlation_heatmap_flow():
         print("\n(Tip: pip install rich  for a colored heatmap.)")
 
 
-def desktop_gui_flow():
-    print("\n--- Opening Desktop Window ---")
-    print("A window should appear on your screen. Close it when you're done to return here.")
-    try:
-        import desktop_gui
-        desktop_gui.launch()
-    except ImportError as e:
-        print(f"\nCouldn't open the desktop window: {e}")
-        print("Tip: tkinter usually ships with Python by default on Windows; "
-              "if it's missing, reinstall Python from python.org with 'tcl/tk and IDLE' checked.")
-    except Exception as e:
-        print(f"\nThe desktop window closed unexpectedly: {e}")
+
 
 
 MENU = """
@@ -502,9 +491,7 @@ MENU = """
  10. View analytics / charts
  11. Test notifications
  12. Weather correlation heatmap
- 13. Open desktop window (GUI)
- 14. Exit
-==================================================
+ 13. Exit
 """
 
 ACTIONS = {
@@ -520,7 +507,6 @@ ACTIONS = {
     "10": analytics_flow,
     "11": test_notification_flow,
     "12": correlation_heatmap_flow,
-    "13": desktop_gui_flow,
 }
 
 
@@ -528,16 +514,16 @@ def main():
     print("Welcome! This tool will guide you step by step — just type the number of what you want to do.")
     while True:
         print(MENU)
-        choice = input("Enter your choice (1-14): ").strip()
+        choice = input("Enter your choice (1-13): ").strip()
 
-        if choice == "14":
+        if choice == "13":
 
             print("\nGoodbye!")
             sys.exit(0)
 
         action = ACTIONS.get(choice)
         if action is None:
-            print("\nPlease enter a number between 1 and 14.")
+            print("\nPlease enter a number between 1 and 13.")
             continue
 
         action()
