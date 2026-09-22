@@ -162,6 +162,24 @@ with tab_forecast:
                 except FileNotFoundError:
                     pass  # model not trained yet; skip prediction silently
 
+        st.markdown("---")
+        st.subheader("Trends")
+
+        import pandas as pd
+        trend_df = pd.DataFrame({
+            "Date": [d["forecast_date"] for d in forecast_days],
+            "Temperature (°C)": [d["temperature_c"] for d in forecast_days],
+            "Rain Probability (%)": [round(d["rain_probability"] * 100, 1) for d in forecast_days],
+        }).set_index("Date")
+
+        tc1, tc2 = st.columns(2)
+        with tc1:
+            st.caption("Temperature Trend")
+            st.line_chart(trend_df["Temperature (°C)"])
+        with tc2:
+            st.caption("Precipitation Trend")
+            st.bar_chart(trend_df["Rain Probability (%)"])
+
     st.markdown("---")
     st.subheader("Manual Forecast Entry")
     st.caption("Add or overwrite a forecast without calling the API.")
@@ -228,6 +246,21 @@ with tab_analytics:
             st.image(report["charts"]["status_breakdown"], width=400)
         else:
             st.info("No completed/pending/rescheduled/cancelled tasks yet to chart status breakdown.")
+
+    st.markdown("---")
+    st.subheader("Weather Variable Correlation Heatmap")
+    st.caption("Correlation between temperature, rain probability, wind speed, month, and the "
+               "'good outdoor day' label, computed from the same data the ML model was trained on. "
+               "This is independent of your task data.")
+
+    import plotly.express as px
+    corr = analytics.get_weather_correlation_matrix()
+    fig = px.imshow(
+        corr, text_auto=".2f", color_continuous_scale="RdBu_r", zmin=-1, zmax=1,
+        aspect="auto",
+    )
+    fig.update_layout(height=450)
+    st.plotly_chart(fig, use_container_width=True)
 
 
 # ------------------------------------------------------ Activity Log tab ----

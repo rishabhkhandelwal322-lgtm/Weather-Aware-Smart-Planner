@@ -211,6 +211,126 @@ def generate_full_report(location):
     }
 
 
+# --------------------------------------------------- weather trend charts ----
+
+def get_temperature_series(location):
+    """
+    Return the 5-day forecast as parallel lists of dates and temperatures,
+    for plotting a temperature trend line.
+    """
+    import weather_fetcher
+    forecast_days = weather_fetcher.get_5day_forecast(location)
+    dates = [f["forecast_date"] for f in forecast_days]
+    temps = [f["temperature_c"] for f in forecast_days]
+    return dates, temps
+
+
+def get_precipitation_series(location):
+    """
+    Return the 5-day forecast as parallel lists of dates and rain
+    probabilities (0-100%), for plotting a precipitation trend.
+    """
+    import weather_fetcher
+    forecast_days = weather_fetcher.get_5day_forecast(location)
+    dates = [f["forecast_date"] for f in forecast_days]
+    rain_pct = [f["rain_probability"] * 100 for f in forecast_days]
+    return dates, rain_pct
+
+
+def plot_temperature_trend(location, save_path=None):
+    """Line chart: forecasted temperature (°C) over the next 5 days."""
+    dates, temps = get_temperature_series(location)
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(dates, temps, marker="o", color="#E67E22", linewidth=2)
+    ax.set_ylabel("Temperature (°C)")
+    ax.set_title(f"5-Day Temperature Trend — {location}")
+    ax.grid(True, alpha=0.3)
+    for x, y in zip(dates, temps):
+        ax.annotate(f"{y}°", (x, y), textcoords="offset points", xytext=(0, 8), ha="center", fontsize=8)
+
+    save_path = save_path or REPORTS_DIR / "temperature_trend.png"
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(save_path)
+    plt.close(fig)
+    return save_path
+
+
+def plot_precipitation_trend(location, save_path=None):
+    """Bar chart: forecasted rain probability (%) over the next 5 days."""
+    dates, rain_pct = get_precipitation_series(location)
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    colors_list = ["#4A6FA5" if r <= 50 else "#2C5F8A" for r in rain_pct]
+    bars = ax.bar(dates, rain_pct, color=colors_list)
+    ax.set_ylabel("Rain Probability (%)")
+    ax.set_title(f"5-Day Precipitation Trend — {location}")
+    ax.set_ylim(0, 110)
+    for bar, val in zip(bars, rain_pct):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 2, f"{val:.0f}%", ha="center", fontsize=8)
+
+    save_path = save_path or REPORTS_DIR / "precipitation_trend.png"
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(save_path)
+    plt.close(fig)
+    return save_path
+
+
+# ------------------------------------------------- correlation heatmap ----
+
+def get_weather_correlation_matrix():
+    """
+    Compute the correlation matrix between weather variables and the
+    good-outdoor-day label, using the same synthetic training dataset
+    the ML predictor was trained on. Returns a pandas DataFrame.
+    Generates the dataset first if it doesn't exist yet.
+    """
+    import pandas as pd
+    import predictor
+
+    if not predictor.DATA_PATH.exists():
+        predictor.generate_synthetic_dataset()
+
+    df = pd.read_csv(predictor.DATA_PATH)
+    columns = ["temperature_c", "rain_probability", "wind_speed_kph", "month", "is_good_day"]
+    return df[columns].corr()
+
+
+def plot_correlation_heatmap(save_path=None):
+    """
+    Save a matplotlib heatmap image of the weather-variable correlation
+    matrix (temperature, rain probability, wind speed, month, and the
+    good-outdoor-day label used to train the ML model).
+    """
+    corr = get_weather_correlation_matrix()
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    im = ax.imshow(corr.values, cmap="RdBu_r", vmin=-1, vmax=1)
+
+    ax.set_xticks(range(len(corr.columns)))
+    ax.set_yticks(range(len(corr.columns)))
+    ax.set_xticklabels(corr.columns, rotation=45, ha="right", fontsize=8)
+    ax.set_yticklabels(corr.columns, fontsize=8)
+
+    for i in range(len(corr.columns)):
+        for j in range(len(corr.columns)):
+            value = corr.values[i, j]
+            text_color = "white" if abs(value) > 0.6 else "black"
+            ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=text_color, fontsize=8)
+
+    ax.set_title("Weather Variable Correlation Heatmap\n(ML training data)", fontsize=11)
+    fig.colorbar(im, ax=ax, shrink=0.8, label="Correlation")
+
+    save_path = save_path or REPORTS_DIR / "correlation_heatmap.png"
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(save_path)
+    plt.close(fig)
+    return save_path
+
+
 if __name__ == "__main__":
     import argparse
 

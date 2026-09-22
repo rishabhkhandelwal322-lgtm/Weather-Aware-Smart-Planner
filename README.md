@@ -12,6 +12,8 @@ Weather-Aware Smart Planner is a Python application that helps users plan their 
 - **Notifications** — Email/desktop alerts when a task is rescheduled or a favorable window opens.
 - **Analytics Dashboard** — Charts correlating task completion rates with weather conditions over time.
 - **Interactive UI** — Streamlit-based dashboard with calendar, task list, forecast, and analytics views.
+-**Weather Trend Visualizations** — Temperature and precipitation trend charts (interactive in the dashboard, real ANSI graphs in the terminal tool) 
+- **Correlation Heatmap**— Interactive visualization showing how temperature, rain probability, and wind speed correlate with favorable outdoor days.
 
 ## Technologies / Tools Used
 - **Language:** Python 3.10+
@@ -23,6 +25,8 @@ Weather-Aware Smart Planner is a Python application that helps users plan their 
 - **Notifications:** smtplib / plyer
 - **Testing:** pytest
 - **Version Control:** Git & GitHub
+-**Terminal Graphics:** plotext, rich, termcharts
+
 
 ## Project Structure
 ```
@@ -50,7 +54,7 @@ weather_planner/
 └── statement.md
 ```
 
- ## Easy Mode (No Coding Knowledge Required) For anyone who isn't comfortable with command-line flags, there's a simple guided menu that walks you through every feature step by step: ```bash python run_interactive.py ``` You'll see a numbered menu (1-12) covering adding/viewing/completing tasks, checking the weather, running the planner, getting ML predictions, viewing analytics, and testing notifications. Just type a number and answer the plain-English prompts — no flags or code required. Every option has a sensible default shown in brackets, and invalid input is handled gracefully with a clear error message rather than a crash.
+ ## Easy Mode (No Coding Knowledge Required) For anyone who isn't comfortable with command-line flags, there's a simple guided menu that walks you through every feature step by step: ```bash python run_interactive.py ``` You'll see a numbered menu (1-13) covering adding/viewing/completing tasks, checking the weather, running the planner, getting ML predictions, viewing analytics, and testing notifications. Just type a number and answer the plain-English prompts — no flags or code required. Every option has a sensible default shown in brackets, and invalid input is handled gracefully with a clear error message rather than a crash.
 
 
 ## Installation & Setup

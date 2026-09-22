@@ -28,6 +28,19 @@ try:
 except ImportError:
     HAS_TERMCHARTS = False
 
+try:
+    import plotext as plotext_plt
+    HAS_PLOTEXT = True
+except ImportError:
+    HAS_PLOTEXT = False
+
+try:
+    from rich.console import Console
+    from rich.table import Table as RichTable
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
+
 storage.init_db()
 
 
@@ -109,6 +122,36 @@ def delete_task_flow():
         print(f"\n{e}")
 
 
+def show_temperature_terminal_chart(dates, temps):
+    """Render a real line chart of temperature over the forecast window, in-terminal."""
+    if not HAS_PLOTEXT:
+        return
+    try:
+        x = list(range(len(dates)))
+        plotext_plt.clf()
+        plotext_plt.plot(x, temps, marker="dot", color="orange")
+        plotext_plt.xticks(x, dates)
+        plotext_plt.title("Temperature Trend (°C)")
+        plotext_plt.plotsize(70, 16)
+        plotext_plt.show()
+    except Exception:
+        pass  # never let a display glitch interrupt the app
+
+
+def show_precipitation_terminal_chart(dates, rain_pct):
+    """Render a real bar chart of rain probability over the forecast window, in-terminal."""
+    if not HAS_PLOTEXT:
+        return
+    try:
+        plotext_plt.clf()
+        plotext_plt.bar(dates, rain_pct, color="blue")
+        plotext_plt.title("Precipitation Trend (% chance of rain)")
+        plotext_plt.plotsize(70, 16)
+        plotext_plt.show()
+    except Exception:
+        pass
+
+
 def weather_flow():
     print("\n--- Check the Weather ---")
     location = ask("Enter your location (City,CountryCode)", "Ashta,IN")
@@ -117,10 +160,23 @@ def weather_flow():
         print(f"\nRight now in {location}: {current['temperature_c']}°C, "
               f"{current['description']}, wind {current['wind_speed_kph']} km/h")
 
+        forecast_days = weather_fetcher.get_5day_forecast(location)
         print("\n5-day forecast:")
-        for day in weather_fetcher.get_5day_forecast(location):
+        for day in forecast_days:
             print(f"  {day['forecast_date']}: {day['temperature_c']}°C, "
                   f"{day['condition']}, rain chance {day['rain_probability']:.0%}")
+
+        if HAS_PLOTEXT and forecast_days:
+            dates = [d["forecast_date"] for d in forecast_days]
+            temps = [d["temperature_c"] for d in forecast_days]
+            rain_pct = [round(d["rain_probability"] * 100, 1) for d in forecast_days]
+            print()
+            show_temperature_terminal_chart(dates, temps)
+            print()
+            show_precipitation_terminal_chart(dates, rain_pct)
+        elif not HAS_PLOTEXT:
+            print("\n(Tip: pip install plotext  for in-terminal temperature/precipitation graphs.)")
+
     except weather_fetcher.WeatherFetchError as e:
         print(f"\nCouldn't fetch live weather: {e}")
         print("Tip: you can still add a forecast manually from the main menu.")
@@ -341,6 +397,55 @@ def test_notification_flow():
     print(f"Email: {'sent' if result['email'] else 'not configured or failed'}")
 
 
+def _correlation_cell_color(value):
+    """Map a correlation value (-1 to 1) to a rich color name."""
+    if value >= 0.6:
+        return "bold red"
+    if value >= 0.2:
+        return "red"
+    if value > -0.2:
+        return "white"
+    if value > -0.6:
+        return "blue"
+    return "bold blue"
+
+
+def correlation_heatmap_flow():
+    print("\n--- Weather Correlation Heatmap ---")
+    print("Correlation between weather variables and the 'good outdoor day' label,")
+    print("computed from the same data the ML model was trained on.\n")
+
+    corr = analytics.get_weather_correlation_matrix()
+
+    if HAS_RICH:
+        console = Console()
+        table = RichTable(title="Weather Variable Correlation Heatmap")
+        table.add_column("")
+        for col in corr.columns:
+            table.add_column(col, justify="center")
+
+        for row_name in corr.index:
+            cells = [row_name]
+            for col_name in corr.columns:
+                value = corr.loc[row_name, col_name]
+                color = _correlation_cell_color(value)
+                cells.append(f"[{color}]{value:.2f}[/{color}]")
+            table.add_row(*cells)
+
+        console.print(table)
+    else:
+        # plain-text fallback, no colors
+        cols = list(corr.columns)
+        header = "".ljust(16) + "".join(c[:10].rjust(11) for c in cols)
+        print(header)
+        for row_name in corr.index:
+            row_str = row_name[:15].ljust(16)
+            for col_name in cols:
+                row_str += f"{corr.loc[row_name, col_name]:.2f}".rjust(11)
+            print(row_str)
+        print("\n(Tip: pip install rich  for a colored heatmap.)")
+
+
 MENU = """
 ==================================================
   WEATHER-AWARE SMART PLANNER — Easy Mode
@@ -356,7 +461,8 @@ MENU = """
   9. Train the ML model
  10. View analytics / charts
  11. Test notifications
- 12. Exit
+ 12. Weather correlation heatmap
+ 13. Exit
 ==================================================
 """
 
@@ -372,6 +478,7 @@ ACTIONS = {
     "9": train_model_flow,
     "10": analytics_flow,
     "11": test_notification_flow,
+    "12": correlation_heatmap_flow,
 }
 
 
@@ -379,15 +486,16 @@ def main():
     print("Welcome! This tool will guide you step by step — just type the number of what you want to do.")
     while True:
         print(MENU)
-        choice = input("Enter your choice (1-12): ").strip()
+        choice = input("Enter your choice (1-13): ").strip()
 
-        if choice == "12":
+        if choice == "13":
+
             print("\nGoodbye!")
             sys.exit(0)
 
         action = ACTIONS.get(choice)
         if action is None:
-            print("\nPlease enter a number between 1 and 12.")
+            print("\nPlease enter a number between 1 and 13.")
             continue
 
         action()

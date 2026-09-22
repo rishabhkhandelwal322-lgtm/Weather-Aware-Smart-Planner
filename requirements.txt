@@ -9,3 +9,4 @@ python-dotenv
 pytest
 termcharts
 rich
+plotext==5.2.8
