@@ -18,9 +18,15 @@ import storage
 import task_manager
 import weather_fetcher
 import planner
-import predictor
-import analytics
 import notifier
+import analytics
+
+try:
+    import predictor
+    HAS_PREDICTOR = True
+except ImportError as e:
+    HAS_PREDICTOR = False
+    _predictor_import_error = str(e)
 
 try:
     import termcharts
@@ -221,6 +227,11 @@ def run_planner_flow():
 
 def predict_flow():
     print("\n--- Predict a Good Outdoor Day ---")
+    if not HAS_PREDICTOR:
+        print(f"\nThis feature needs scikit-learn/pandas, which couldn't be loaded on this machine "
+              f"({_predictor_import_error}).")
+        print("This is a local environment issue, not a project bug -- other features are unaffected.")
+        return
     temp = ask("Temperature in °C", "28")
     rain = ask("Rain probability (0.0 to 1.0)", "0.2")
     wind = ask("Wind speed in km/h", "10")
@@ -237,6 +248,11 @@ def predict_flow():
 
 def train_model_flow():
     print("\n--- Train the ML Model ---")
+    if not HAS_PREDICTOR:
+        print(f"\nThis feature needs scikit-learn/pandas, which couldn't be loaded on this machine "
+              f"({_predictor_import_error}).")
+        print("This is a local environment issue, not a project bug -- other features are unaffected.")
+        return
     print("This generates sample training data and trains the predictor. Takes a few seconds...")
     df = predictor.generate_synthetic_dataset()
     metrics = predictor.train_model(df)
@@ -415,7 +431,17 @@ def correlation_heatmap_flow():
     print("Correlation between weather variables and the 'good outdoor day' label,")
     print("computed from the same data the ML model was trained on.\n")
 
-    corr = analytics.get_weather_correlation_matrix()
+    if not HAS_PREDICTOR:
+        print(f"This feature needs pandas, which couldn't be loaded on this machine "
+              f"({_predictor_import_error}).")
+        print("This is a local environment issue, not a project bug -- other features are unaffected.")
+        return
+
+    try:
+        corr = analytics.get_weather_correlation_matrix()
+    except ImportError as e:
+        print(f"Couldn't load the correlation data: {e}")
+        return
 
     if HAS_RICH:
         console = Console()

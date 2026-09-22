@@ -20,8 +20,14 @@ import storage
 import task_manager
 import weather_fetcher
 import planner
-import predictor
 import notifier
+
+try:
+    import predictor
+    HAS_PREDICTOR = True
+except ImportError as e:
+    HAS_PREDICTOR = False
+    _predictor_import_error = str(e)
 
 storage.init_db()
 
@@ -189,6 +195,13 @@ class WeatherTab(ttk.Frame):
             messagebox.showerror("Weather fetch failed", str(e))
 
     def predict_today(self):
+        if not HAS_PREDICTOR:
+            messagebox.showwarning(
+                "Feature unavailable",
+                f"This needs scikit-learn/pandas, which couldn't load on this machine:\n\n"
+                f"{_predictor_import_error}\n\nThis is a local environment issue, not a project bug.",
+            )
+            return
         location = self.location_entry.get().strip() or "Ashta,IN"
         try:
             forecast = weather_fetcher.get_forecast_for_date(location, datetime.now().strftime("%Y-%m-%d"))

@@ -22,9 +22,15 @@ import storage
 import task_manager
 import weather_fetcher
 import planner
-import predictor
 import analytics
 import notifier
+
+try:
+    import predictor
+    HAS_PREDICTOR = True
+except ImportError as e:
+    HAS_PREDICTOR = False
+    _predictor_import_error = str(e)
 
 storage.init_db()
 
@@ -156,11 +162,12 @@ with tab_forecast:
                 st.write(f"💨 {day['wind_speed_kph']} km/h")
                 st.write(f"🌧️ {day['rain_probability']:.0%}")
 
-                try:
-                    prob = predictor.predict_for_forecast(day)
-                    st.progress(int(prob), text=f"{prob}% good outdoor day")
-                except FileNotFoundError:
-                    pass  # model not trained yet; skip prediction silently
+                if HAS_PREDICTOR:
+                    try:
+                        prob = predictor.predict_for_forecast(day)
+                        st.progress(int(prob), text=f"{prob}% good outdoor day")
+                    except FileNotFoundError:
+                        pass  # model not trained yet; skip prediction silently
 
         st.markdown("---")
         st.subheader("Trends")
@@ -253,14 +260,23 @@ with tab_analytics:
                "'good outdoor day' label, computed from the same data the ML model was trained on. "
                "This is independent of your task data.")
 
-    import plotly.express as px
-    corr = analytics.get_weather_correlation_matrix()
-    fig = px.imshow(
-        corr, text_auto=".2f", color_continuous_scale="RdBu_r", zmin=-1, zmax=1,
-        aspect="auto",
-    )
-    fig.update_layout(height=450)
-    st.plotly_chart(fig, use_container_width=True)
+    if not HAS_PREDICTOR:
+        st.warning(
+            f"This feature needs scikit-learn/pandas, which couldn't be loaded on this machine "
+            f"({_predictor_import_error}). This is a local environment issue, not a project bug."
+        )
+    else:
+        try:
+            import plotly.express as px
+            corr = analytics.get_weather_correlation_matrix()
+            fig = px.imshow(
+                corr, text_auto=".2f", color_continuous_scale="RdBu_r", zmin=-1, zmax=1,
+                aspect="auto",
+            )
+            fig.update_layout(height=450)
+            st.plotly_chart(fig, use_container_width=True)
+        except ImportError as e:
+            st.warning(f"Couldn't load the correlation heatmap: {e}")
 
 
 # ------------------------------------------------------ Activity Log tab ----
