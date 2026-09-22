@@ -4,7 +4,7 @@ planner.py
 Rule-based rescheduling engine for the Weather-Aware Smart Planner.
 
 Logic: for each pending 'outdoor' task scheduled on a day whose
-rain probability exceeds RAIN_THRESHOLD, find the next day within
+rain probability exceeds RAIN_CUTOFF, find the next day within
 the 5-day forecast window whose rain probability is below the
 threshold and move the task there. If no good day is found in the
 window, the task is flagged (status stays 'pending' but a log entry
@@ -16,14 +16,14 @@ from datetime import datetime, timedelta
 import storage
 import weather_fetcher
 
-RAIN_THRESHOLD = 0.5  # probability of precipitation (0.0 - 1.0) above which a day is "bad" for outdoor tasks
+RAIN_CUTOFF = 0.5  # probability of precipitation (0.0 - 1.0) above which a day is "bad" for outdoor tasks
 
 
 def _is_bad_weather_day(forecast):
     """A day is bad for outdoor tasks if rain probability exceeds the threshold."""
     if not forecast:
         return False  # no data -> don't block on missing info
-    return forecast.get("rain_probability", 0.0) > RAIN_THRESHOLD
+    return forecast.get("rain_probability", 0.0) > RAIN_CUTOFF
 
 
 def run_planning_cycle(location):
