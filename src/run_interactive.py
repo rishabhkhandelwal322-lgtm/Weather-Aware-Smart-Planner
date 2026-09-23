@@ -475,6 +475,26 @@ def correlation_heatmap_flow():
 
 
 
+def streamlit_dashboard_flow():
+    print("\n--- Launching Streamlit Dashboard ---")
+    print("This opens the full dashboard in your web browser at http://localhost:8501")
+    print("Press Ctrl+C in this terminal when you're done, to stop it and return to this menu.\n")
+
+    import subprocess
+    import os
+
+    dashboard_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.py")
+
+    try:
+        subprocess.run([sys.executable, "-m", "streamlit", "run", dashboard_path])
+    except KeyboardInterrupt:
+        print("\nDashboard stopped.")
+    except FileNotFoundError:
+        print("\nCouldn't find Streamlit. Make sure it's installed: pip install streamlit")
+    except Exception as e:
+        print(f"\nCouldn't launch the dashboard: {e}")
+
+
 MENU = """
 ==================================================
   WEATHER-AWARE SMART PLANNER — Easy Mode
@@ -491,7 +511,9 @@ MENU = """
  10. View analytics / charts
  11. Test notifications
  12. Weather correlation heatmap
- 13. Exit
+ 13. Open Streamlit dashboard (browser)
+ 14. Exit
+==================================================
 """
 
 ACTIONS = {
@@ -507,6 +529,7 @@ ACTIONS = {
     "10": analytics_flow,
     "11": test_notification_flow,
     "12": correlation_heatmap_flow,
+    "13": streamlit_dashboard_flow,
 }
 
 
@@ -514,16 +537,16 @@ def main():
     print("Welcome! This tool will guide you step by step — just type the number of what you want to do.")
     while True:
         print(MENU)
-        choice = input("Enter your choice (1-13): ").strip()
+        choice = input("Enter your choice (1-14): ").strip()
 
-        if choice == "13":
+        if choice == "14":
 
             print("\nGoodbye!")
             sys.exit(0)
 
         action = ACTIONS.get(choice)
         if action is None:
-            print("\nPlease enter a number between 1 and 13.")
+            print("\nPlease enter a number between 1 and 14.")
             continue
 
         action()
