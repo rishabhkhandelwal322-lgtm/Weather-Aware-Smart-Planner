@@ -172,20 +172,30 @@ with tab_forecast:
         st.markdown("---")
         st.subheader("Trends")
 
-        import pandas as pd
-        trend_df = pd.DataFrame({
-            "Date": [d["forecast_date"] for d in forecast_days],
-            "Temperature (°C)": [d["temperature_c"] for d in forecast_days],
-            "Rain Probability (%)": [round(d["rain_probability"] * 100, 1) for d in forecast_days],
-        }).set_index("Date")
+        try:
+            import pandas as pd
+            trend_df = pd.DataFrame({
+                "Date": [d["forecast_date"] for d in forecast_days],
+                "Temperature (°C)": [d["temperature_c"] for d in forecast_days],
+                "Rain Probability (%)": [round(d["rain_probability"] * 100, 1) for d in forecast_days],
+            }).set_index("Date")
 
-        tc1, tc2 = st.columns(2)
-        with tc1:
-            st.caption("Temperature Trend")
-            st.line_chart(trend_df["Temperature (°C)"])
-        with tc2:
-            st.caption("Precipitation Trend")
-            st.bar_chart(trend_df["Rain Probability (%)"])
+            tc1, tc2 = st.columns(2)
+            with tc1:
+                st.caption("Temperature Trend")
+                st.line_chart(trend_df["Temperature (°C)"])
+            with tc2:
+                st.caption("Precipitation Trend")
+                st.bar_chart(trend_df["Rain Probability (%)"])
+        except ImportError as e:
+            st.warning(
+                f"Trend charts need pandas, which couldn't be loaded on this machine ({e}). "
+                f"This is a local environment issue, not a project bug. Showing the raw values instead:"
+            )
+            table_md = "| Date | Temperature (°C) | Rain Probability (%) |\n|---|---|---|\n"
+            for d in forecast_days:
+                table_md += f"| {d['forecast_date']} | {d['temperature_c']} | {round(d['rain_probability'] * 100, 1)} |\n"
+            st.markdown(table_md)
 
     st.markdown("---")
     st.subheader("Manual Forecast Entry")
