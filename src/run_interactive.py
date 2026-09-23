@@ -537,7 +537,7 @@ def main():
     print("Welcome! This tool will guide you step by step — just type the number of what you want to do.")
     while True:
         print(MENU)
-        choice = input("Enter your choice (1-14): ").strip()
+        choice = input("Enter your choice (1-15): ").strip()
 
         if choice == "14":
 
@@ -546,7 +546,7 @@ def main():
 
         action = ACTIONS.get(choice)
         if action is None:
-            print("\nPlease enter a number between 1 and 14.")
+            print("\nPlease enter a number between 1 and 15.")
             continue
 
         action()
