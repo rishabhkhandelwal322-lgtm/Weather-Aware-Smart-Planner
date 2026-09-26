@@ -1,66 +1,205 @@
-"""
-storage.py
------------
-SQLite storage layer for the Weather-Aware Smart Planner.
-
-Handles all database interactions: schema creation, and CRUD
-operations for tasks, cached forecasts, and activity logs.
-"""
-
-import sqlite3
-from contextlib import contextmanager
-from pathlib import Path
 from datetime import datetime
-
-DB_PATH = Path(__file__).parent.parent / "data" / "planner.db"
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS tasks (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    title           TEXT NOT NULL,
-    description     TEXT,
-    task_type       TEXT NOT NULL CHECK (task_type IN ('outdoor', 'indoor')),
-    priority        TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
-    deadline        TEXT,                     -- ISO date string, nullable
-    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'rescheduled', 'completed', 'cancelled')),
-    original_date   TEXT,                     -- date it was first scheduled for
-    scheduled_date  TEXT,                     -- current scheduled date (may differ after reschedule)
-    created_at      TEXT NOT NULL,
-    updated_at      TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS forecasts (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    location        TEXT NOT NULL,
-    forecast_date   TEXT NOT NULL,             -- date the forecast is FOR
-    temperature_c   REAL,
-    condition       TEXT,                      -- e.g. 'Rain', 'Clear', 'Clouds'
-    wind_speed_kph   REAL,
-    rain_probability REAL,                     -- 0.0 - 1.0
-    fetched_at      TEXT NOT NULL,
-    UNIQUE(location, forecast_date)
-);
-
-CREATE TABLE IF NOT EXISTS logs (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id         INTEGER,
-    action          TEXT NOT NULL,             -- e.g. 'created', 'rescheduled', 'completed'
-    details         TEXT,
-    timestamp       TEXT NOT NULL,
-    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL
-);
-"""
+import os
+import sqlite3
+import sys
 
 
-@contextmanager
-def get_connection():
-    """Context-managed SQLite connection with foreign keys enabled."""
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+# Database Operations Class
+
+
+class TaskDatabase:
+    def __init__(self, db_path=None):
+        if db_path is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.db_path = os.path.join(base_dir, "data", "planner.db")
+        else:
+            self.db_path = db_path
+
+    def _get_connection(self):
+        folder = os.path.dirname(self.db_path)
+        if folder and not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+            
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+
+    def setup_tables(self):
+        t_table = (
+            "CREATE TABLE IF NOT EXISTS tasks ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "title TEXT NOT NULL, "
+            "description TEXT, "
+            "task_type TEXT NOT NULL CHECK (task_type IN ('outdoor', 'indoor')), "
+            "priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')), "
+            "deadline TEXT, "
+            "status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'rescheduled', 'completed', 'cancelled')), "
+            "original_date TEXT, "
+            "scheduled_date TEXT, "
+            "created_at TEXT NOT NULL, "
+            "updated_at TEXT NOT NULL"
+            ");"
+        )
+        f_table = (
+            "CREATE TABLE IF NOT EXISTS forecasts ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "location TEXT NOT NULL, "
+            "forecast_date TEXT NOT NULL, "
+            "temperature_c REAL, "
+            "condition TEXT, "
+            "wind_speed_kph REAL, "
+            "rain_probability REAL, "
+            "fetched_at TEXT NOT NULL, "
+            "UNIQUE(location, forecast_date)"
+            ");"
+        )
+        l_table = (
+            "CREATE TABLE IF NOT EXISTS logs ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "task_id INTEGER, "
+            "action TEXT NOT NULL, "
+            "details TEXT, "
+            "timestamp TEXT NOT NULL, "
+            "FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL"
+            ");"
+        )
+        
+        c = self._get_connection()
+        try:
+            cur = c.cursor()
+            cur.execute(t_table)
+            cur.execute(f_table)
+            cur.execute(l_table)
+            c.commit()
+        finally:
+            c.close()
+
+
+# Singleton database instance for functional compatibility
+_DB = TaskDatabase()
+
+
+def _timestamp():
+    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _log_event(conn, task_id, action, details):
+    conn.execute(
+        "INSERT INTO logs (task_id, action, details, timestamp) VALUES (?, ?, ?, ?)",
+        (task_id, action, details, _timestamp())
+    )
+
+
+
+# Module Level API Interface
+
+
+def init_db():
+    _DB.setup_tables()
+
+
+def add_task(title, task_type, description="", priority="medium", deadline=None, scheduled_date=None):
+    if task_type not in ["outdoor", "indoor"]:
+        raise ValueError("Invalid task_type: must be 'outdoor' or 'indoor'")
+
+    ts = _timestamp()
+    query = (
+        "INSERT INTO tasks "
+        "(title, description, task_type, priority, deadline, status, original_date, scheduled_date, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)"
+    )
+    
+    conn = _DB._get_connection()
     try:
-        yield conn
+        cur = conn.cursor()
+        cur.execute(query, (title, description, task_type, priority, deadline, scheduled_date, scheduled_date, ts, ts))
+        tid = cur.lastrowid
+        _log_event(conn, tid, "created", f"Task '{title}' created")
+        conn.commit()
+        return tid
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_tasks(status=None, task_type=None):
+    clauses = []
+    params = []
+
+    if status:
+        clauses.append("status = ?")
+        params.append(status)
+    if task_type:
+        clauses.append("task_type = ?")
+        params.append(task_type)
+
+    base = "SELECT * FROM tasks"
+    if clauses:
+        base += " WHERE " + " AND ".join(clauses)
+        
+    base += " ORDER BY CASE WHEN scheduled_date IS NULL THEN 1 ELSE 0 END, scheduled_date ASC, priority DESC"
+
+    conn = _DB._get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(base, params)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_task(task_id):
+    conn = _DB._get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row))
+    finally:
+        conn.close()
+
+
+def update_task(task_id, **fields):
+    valid_keys = {'title', 'description', 'task_type', 'priority', 'deadline', 'status', 'scheduled_date'}
+    updates = {k: v for k, v in fields.items() if k in valid_keys}
+
+    if not updates:
+        return False
+
+    updates['updated_at'] = _timestamp()
+    assignments = [f"{k} = ?" for k in updates.keys()]
+    values = list(updates.values())
+    values.append(task_id)
+
+    sql = f"UPDATE tasks SET {', '.join(assignments)} WHERE id = ?"
+
+    conn = _DB._get_connection()
+    try:
+        conn.execute(sql, values)
+        _log_event(conn, task_id, "updated", f"Fields changed: {list(fields.keys())}")
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def reschedule_task(task_id, new_date, reason=""):
+    conn = _DB._get_connection()
+    try:
+        conn.execute(
+            "UPDATE tasks SET scheduled_date = ?, status = 'rescheduled', updated_at = ? WHERE id = ?",
+            (new_date, _timestamp(), task_id)
+        )
+        _log_event(conn, task_id, "rescheduled", f"Moved to {new_date}. Reason: {reason}")
         conn.commit()
     except Exception:
         conn.rollback()
@@ -69,173 +208,124 @@ def get_connection():
         conn.close()
 
 
-def init_db():
-    """Create tables if they do not already exist."""
-    with get_connection() as conn:
-        conn.executescript(SCHEMA)
-
-
-def _now():
-    return datetime.now().isoformat(timespec="seconds")
-
-
-# ---------------------------------------------------------------- tasks ----
-
-def add_task(title, task_type, description="", priority="medium",
-             deadline=None, scheduled_date=None):
-    """Insert a new task and return its id."""
-    if task_type not in ("outdoor", "indoor"):
-        raise ValueError("task_type must be 'outdoor' or 'indoor'")
-
-    now = _now()
-    with get_connection() as conn:
-        cursor = conn.execute(
-            """INSERT INTO tasks
-               (title, description, task_type, priority, deadline,
-                status, original_date, scheduled_date, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)""",
-            (title, description, task_type, priority, deadline,
-             scheduled_date, scheduled_date, now, now),
-        )
-        task_id = cursor.lastrowid
-        _log(conn, task_id, "created", f"Task '{title}' created")
-        return task_id
-
-
-def get_tasks(status=None, task_type=None):
-    """Return tasks, optionally filtered by status and/or type."""
-    query = "SELECT * FROM tasks WHERE 1=1"
-    params = []
-    if status:
-        query += " AND status = ?"
-        params.append(status)
-    if task_type:
-        query += " AND task_type = ?"
-        params.append(task_type)
-    query += " ORDER BY scheduled_date IS NULL, scheduled_date, priority DESC"
-
-    with get_connection() as conn:
-        rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
-
-
-def get_task(task_id):
-    with get_connection() as conn:
-        row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
-        return dict(row) if row else None
-
-
-def update_task(task_id, **fields):
-    """Update arbitrary allowed fields on a task."""
-    allowed = {"title", "description", "task_type", "priority", "deadline",
-               "status", "scheduled_date"}
-    updates = {k: v for k, v in fields.items() if k in allowed}
-    if not updates:
-        return False
-
-    updates["updated_at"] = _now()
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
-    values = list(updates.values()) + [task_id]
-
-    with get_connection() as conn:
-        conn.execute(f"UPDATE tasks SET {set_clause} WHERE id = ?", values)
-        _log(conn, task_id, "updated", f"Fields changed: {list(fields.keys())}")
-        return True
-
-
-def reschedule_task(task_id, new_date, reason=""):
-    """Convenience wrapper: move a task to a new date and mark it rescheduled."""
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE tasks SET scheduled_date = ?, status = 'rescheduled', updated_at = ? WHERE id = ?",
-            (new_date, _now(), task_id),
-        )
-        _log(conn, task_id, "rescheduled", f"Moved to {new_date}. Reason: {reason}")
-
-
 def complete_task(task_id):
-    with get_connection() as conn:
+    conn = _DB._get_connection()
+    try:
         conn.execute(
             "UPDATE tasks SET status = 'completed', updated_at = ? WHERE id = ?",
-            (_now(), task_id),
+            (_timestamp(), task_id)
         )
-        _log(conn, task_id, "completed", "Task marked complete")
+        _log_event(conn, task_id, "completed", "Task marked complete")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def delete_task(task_id):
-    with get_connection() as conn:
+    conn = _DB._get_connection()
+    try:
         conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
-        _log(conn, None, "deleted", f"Task {task_id} deleted")
+        _log_event(conn, None, "deleted", f"Task {task_id} deleted")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
-# ----------------------------------------------------------- forecasts ----
 
-def save_forecast(location, forecast_date, temperature_c, condition,
-                   wind_speed_kph, rain_probability):
-    """Insert or replace a cached forecast for a given location/date."""
-    with get_connection() as conn:
-        conn.execute(
-            """INSERT INTO forecasts
-               (location, forecast_date, temperature_c, condition,
-                wind_speed_kph, rain_probability, fetched_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(location, forecast_date) DO UPDATE SET
-                 temperature_c = excluded.temperature_c,
-                 condition = excluded.condition,
-                 wind_speed_kph = excluded.wind_speed_kph,
-                 rain_probability = excluded.rain_probability,
-                 fetched_at = excluded.fetched_at""",
-            (location, forecast_date, temperature_c, condition,
-             wind_speed_kph, rain_probability, _now()),
-        )
+# Weather Cache
+
+
+def save_forecast(location, forecast_date, temperature_c, condition, wind_speed_kph, rain_probability):
+    stmt = (
+        "INSERT INTO forecasts (location, forecast_date, temperature_c, condition, wind_speed_kph, rain_probability, fetched_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(location, forecast_date) DO UPDATE SET "
+        "temperature_c = excluded.temperature_c, "
+        "condition = excluded.condition, "
+        "wind_speed_kph = excluded.wind_speed_kph, "
+        "rain_probability = excluded.rain_probability, "
+        "fetched_at = excluded.fetched_at"
+    )
+    conn = _DB._get_connection()
+    try:
+        conn.execute(stmt, (location, forecast_date, temperature_c, condition, wind_speed_kph, rain_probability, _timestamp()))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def get_forecast(location, forecast_date):
-    with get_connection() as conn:
-        row = conn.execute(
+    conn = _DB._get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
             "SELECT * FROM forecasts WHERE location = ? AND forecast_date = ?",
-            (location, forecast_date),
-        ).fetchone()
-        return dict(row) if row else None
+            (location, forecast_date)
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row))
+    finally:
+        conn.close()
 
 
 def get_forecast_range(location, start_date, end_date):
-    with get_connection() as conn:
-        rows = conn.execute(
-            """SELECT * FROM forecasts
-               WHERE location = ? AND forecast_date BETWEEN ? AND ?
-               ORDER BY forecast_date""",
-            (location, start_date, end_date),
-        ).fetchall()
-        return [dict(row) for row in rows]
+    conn = _DB._get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM forecasts WHERE location = ? AND forecast_date BETWEEN ? AND ? ORDER BY forecast_date",
+            (location, start_date, end_date)
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return []
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in rows]
+    finally:
+        conn.close()
 
 
-# ---------------------------------------------------------------- logs ----
 
-def _log(conn, task_id, action, details):
-    """Internal helper: write a log entry using an existing open connection."""
-    conn.execute(
-        "INSERT INTO logs (task_id, action, details, timestamp) VALUES (?, ?, ?, ?)",
-        (task_id, action, details, _now()),
-    )
+# Logging API
 
 
 def get_logs(task_id=None, limit=100):
     query = "SELECT * FROM logs"
-    params = []
+    binds = []
+
     if task_id is not None:
         query += " WHERE task_id = ?"
-        params.append(task_id)
-    query += " ORDER BY timestamp DESC LIMIT ?"
-    params.append(limit)
+        binds.append(task_id)
 
-    with get_connection() as conn:
-        rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+    query += " ORDER BY timestamp DESC LIMIT ?"
+    binds.append(limit)
+
+    conn = _DB._get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(query, binds)
+        rows = cur.fetchall()
+        if not rows:
+            return []
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in rows]
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
-    import sys
-    if "--init" in sys.argv:
+    if len(sys.argv) > 1 and sys.argv[1] == "--init":
         init_db()
-        print(f"Database initialized at {DB_PATH}")
+        print(f"Initialized database schema at {_DB.db_path}")

@@ -1,152 +1,143 @@
 """
 planner.py
------------
 Rule-based rescheduling engine for the Weather-Aware Smart Planner.
-
-Logic: for each pending 'outdoor' task scheduled on a day whose
-rain probability exceeds RAIN_CUTOFF, find the next day within
-the 5-day forecast window whose rain probability is below the
-threshold and move the task there. If no good day is found in the
-window, the task is flagged (status stays 'pending' but a log entry
-and a returned 'unresolved' note explain why).
 """
 
 from datetime import datetime, timedelta
+import sys
 
 import storage
 import weather_fetcher
 
-RAIN_CUTOFF = 0.5  # probability of precipitation (0.0 - 1.0) above which a day is "bad" for outdoor tasks
+MAX_PRECIPITATION_THRESHOLD = 0.5  # Precip probability limit for outdoor jobs
 
 
-def _is_bad_weather_day(forecast):
-    """A day is bad for outdoor tasks if rain probability exceeds the threshold."""
-    if not forecast:
-        return False  # no data -> don't block on missing info
-    return forecast.get("rain_probability", 0.0) > RAIN_CUTOFF
+def _check_inclement_weather(weather_data):
+    # Missing data shouldn't block execution
+    if not weather_data:
+        return False
+    
+    precip_prob = weather_data.get("rain_probability", 0.0)
+    return precip_prob > MAX_PRECIPITATION_THRESHOLD
 
 
-def run_planning_cycle(location):
-    """
-    Check every pending outdoor task against the forecast and
-    reschedule the ones that land on a bad-weather day.
+def run_planning_cycle(target_loc):
+    forecast_list = weather_fetcher.get_5day_forecast(target_loc) or []
+    weather_map = {entry["forecast_date"]: entry for entry in forecast_list}
 
-    Returns a summary dict:
-    {
-        'checked': int,
-        'rescheduled': [ {task_id, title, old_date, new_date} ... ],
-        'unresolved': [ {task_id, title, reason} ... ],
+    outdoor_jobs = storage.get_tasks(status="pending", task_type="outdoor")
+    stats = {
+        "checked": len(outdoor_jobs), 
+        "rescheduled": [], 
+        "unresolved": []
     }
-    """
-    forecast_days = weather_fetcher.get_5day_forecast(location)
-    forecast_by_date = {f["forecast_date"]: f for f in forecast_days}
 
-    outdoor_tasks = storage.get_tasks(status="pending", task_type="outdoor")
+    idx = 0
+    while idx < len(outdoor_jobs):
+        current_job = outdoor_jobs[idx]
+        idx += 1
 
-    result = {"checked": len(outdoor_tasks), "rescheduled": [], "unresolved": []}
+        curr_date = current_job.get("scheduled_date")
+        if not curr_date:
+            continue
 
-    for task in outdoor_tasks:
-        scheduled_date = task.get("scheduled_date")
-        if not scheduled_date:
-            continue  # no date set yet, nothing to check
+        day_weather = weather_map.get(curr_date)
+        if not _check_inclement_weather(day_weather):
+            continue
 
-        forecast = forecast_by_date.get(scheduled_date)
-        if not _is_bad_weather_day(forecast):
-            continue  # already on a good day, leave it alone
+        alternative_date = _find_next_good_day(weather_map, current_date=curr_date)
 
-        new_date = _find_next_good_day(forecast_by_date, after_date=scheduled_date)
-
-        if new_date:
+        if alternative_date:
+            rain_pct = day_weather.get('rain_probability', 0) * 100
+            note = f"Rain probability {rain_pct:.0f}% on {curr_date}"
+            
             storage.reschedule_task(
-                task["id"],
-                new_date,
-                reason=f"Rain probability {forecast['rain_probability']:.0%} on {scheduled_date}",
+                current_job["id"],
+                alternative_date,
+                reason=note
             )
-            result["rescheduled"].append({
-                "task_id": task["id"],
-                "title": task["title"],
-                "old_date": scheduled_date,
-                "new_date": new_date,
+            
+            stats["rescheduled"].append({
+                "task_id": current_job["id"],
+                "title": current_job["title"],
+                "old_date": curr_date,
+                "new_date": alternative_date,
             })
         else:
-            result["unresolved"].append({
-                "task_id": task["id"],
-                "title": task["title"],
+            stats["unresolved"].append({
+                "task_id": current_job["id"],
+                "title": current_job["title"],
                 "reason": "No good-weather day found in the 5-day forecast window",
             })
 
-    return result
+    return stats
 
 
-def _find_next_good_day(forecast_by_date, after_date):
-    """
-    Look through the forecast dates in order (after `after_date`)
-    and return the first one below the rain threshold. Returns
-    None if none qualify.
-    """
-    sorted_dates = sorted(forecast_by_date.keys())
-    try:
-        start_index = sorted_dates.index(after_date) + 1
-    except ValueError:
-        start_index = 0  # after_date not in window; scan from the start
+def _find_next_good_day(forecast_lookup, current_date):
+    ordered_dates = sorted(list(forecast_lookup.keys()))
+    
+    start_pos = 0
+    if current_date in ordered_dates:
+        start_pos = ordered_dates.index(current_date) + 1
 
-    for date in sorted_dates[start_index:]:
-        if not _is_bad_weather_day(forecast_by_date[date]):
-            return date
+    remaining_dates = ordered_dates[start_pos:]
+    for d in remaining_dates:
+        if not _check_inclement_weather(forecast_lookup[d]):
+            return d
+            
     return None
 
 
-def get_daily_plan(location, target_date=None):
-    """
-    Build a human-readable plan for a given date (defaults to today):
-    which tasks are on, and whether the day's weather is favorable.
-
-    Returns:
-    {
-        'date': str,
-        'forecast': dict or None,
-        'is_good_outdoor_day': bool,
-        'tasks': [task dicts scheduled for that date]
-    }
-    """
+def get_daily_plan(target_loc, target_date=None):
     if target_date is None:
         target_date = datetime.now().date().isoformat()
 
-    forecast = weather_fetcher.get_forecast_for_date(location, target_date)
-    all_pending = storage.get_tasks(status="pending") + storage.get_tasks(status="rescheduled")
-    tasks_today = [t for t in all_pending if t.get("scheduled_date") == target_date]
+    day_forecast = weather_fetcher.get_forecast_for_date(target_loc, target_date)
+    
+    pending_records = storage.get_tasks(status="pending")
+    rescheduled_records = storage.get_tasks(status="rescheduled")
+    all_active = pending_records + rescheduled_records
+
+    matched_tasks = []
+    for record in all_active:
+        if record.get("scheduled_date") == target_date:
+            matched_tasks.append(record)
+
+    is_favorable = not _check_inclement_weather(day_forecast)
 
     return {
         "date": target_date,
-        "forecast": forecast,
-        "is_good_outdoor_day": not _is_bad_weather_day(forecast),
-        "tasks": tasks_today,
+        "forecast": day_forecast,
+        "is_good_outdoor_day": is_favorable,
+        "tasks": matched_tasks,
     }
 
 
-def find_upcoming_good_windows(location, days_ahead=5):
-    """
-    Return a list of upcoming dates (within the forecast window)
-    that are favorable for outdoor tasks, most imminent first.
-    """
-    forecast_days = weather_fetcher.get_5day_forecast(location)
-    good_days = [
-        f["forecast_date"] for f in forecast_days
-        if not _is_bad_weather_day(f)
-    ]
-    return sorted(good_days)
+def find_upcoming_good_windows(target_loc, days_ahead=5):
+    raw_forecast = weather_fetcher.get_5day_forecast(target_loc)
+    
+    favorable_dates = []
+    for day in raw_forecast:
+        if not _check_inclement_weather(day):
+            favorable_dates.append(day["forecast_date"])
+
+    favorable_dates.sort()
+    return favorable_dates
 
 
 if __name__ == "__main__":
-    import sys
-    loc = sys.argv[1] if len(sys.argv) > 1 else "Ashta,IN"
+    loc_arg = sys.argv[1] if len(sys.argv) > 1 else "Ashta,IN"
 
-    print(f"Running planning cycle for {loc}...")
-    summary = run_planning_cycle(loc)
+    print(f"Running planning cycle for {loc_arg}...")
+    summary = run_planning_cycle(loc_arg)
+    
     print(f"Checked {summary['checked']} outdoor task(s).")
-    for r in summary["rescheduled"]:
-        print(f"  Rescheduled '{r['title']}': {r['old_date']} -> {r['new_date']}")
-    for u in summary["unresolved"]:
-        print(f"  Could not reschedule '{u['title']}': {u['reason']}")
+    
+    for item in summary["rescheduled"]:
+        print(f"  Rescheduled '{item['title']}': {item['old_date']} -> {item['new_date']}")
+        
+    for item in summary["unresolved"]:
+        print(f"  Could not reschedule '{item['title']}': {item['reason']}")
 
-    print("\nGood outdoor windows in the next 5 days:", find_upcoming_good_windows(loc))
+    open_windows = find_upcoming_good_windows(loc_arg)
+    print("\nGood outdoor windows in the next 5 days:", open_windows)

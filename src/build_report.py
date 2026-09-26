@@ -1,10 +1,9 @@
 """
 build_report.py
------------------
-Generates the full VITyarthi project report PDF for the
-Weather-Aware Smart Planner, combining all 15 required sections
-with the design diagrams and analytics charts already generated.
+Script to generate the final PDF report for the Weather-Aware Smart Planner project.
 """
+
+from pathlib import Path
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
@@ -13,307 +12,266 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image, Table, TableStyle,
-    ListFlowable, ListItem, KeepTogether
+    ListFlowable, ListItem
 )
 
-from pathlib import Path
-ROOT = Path(__file__).parent.parent
-DIAG = str(ROOT / "diagrams")
-CHARTS = str(ROOT / "reports")
-OUT = str(ROOT / "Weather_Aware_Smart_Planner_Report.pdf")
+# Resolve project paths
+root_dir = Path(__file__).resolve().parent.parent
+diag_path = root_dir / "diagrams"
+charts_path = root_dir / "reports"
+out_pdf = root_dir / "Weather_Aware_Smart_Planner_Report.pdf"
 
+# Initialize custom styles
 styles = getSampleStyleSheet()
 
-styles.add(ParagraphStyle(name="CoverTitle", fontSize=26, leading=32, alignment=TA_CENTER,
-                           spaceAfter=14, fontName="Helvetica-Bold", textColor=colors.HexColor("#2C3E50")))
-styles.add(ParagraphStyle(name="CoverSub", fontSize=14, leading=20, alignment=TA_CENTER,
-                           spaceAfter=8, textColor=colors.HexColor("#4A6FA5")))
-styles.add(ParagraphStyle(name="CoverMeta", fontSize=11, leading=16, alignment=TA_CENTER,
-                           spaceAfter=4))
-styles.add(ParagraphStyle(name="SectionHeading", fontSize=16, leading=20, spaceBefore=6,
-                           spaceAfter=10, fontName="Helvetica-Bold",
-                           textColor=colors.HexColor("#2C3E50"),
-                           borderWidth=0, borderColor=colors.HexColor("#4A6FA5")))
-styles.add(ParagraphStyle(name="SubHeading", fontSize=12.5, leading=16, spaceBefore=10,
-                           spaceAfter=6, fontName="Helvetica-Bold",
-                           textColor=colors.HexColor("#4A6FA5")))
-styles.add(ParagraphStyle(name="BodyJustify", fontSize=10.2, leading=15, alignment=TA_JUSTIFY,
-                           spaceAfter=8))
-styles.add(ParagraphStyle(name="Caption", fontSize=8.5, leading=11, alignment=TA_CENTER,
-                           textColor=colors.HexColor("#555555"), spaceAfter=14, spaceBefore=4,
-                           fontName="Helvetica-Oblique"))
-styles.add(ParagraphStyle(name="CodeBlock", fontSize=8, leading=11, fontName="Courier",
-                           backColor=colors.HexColor("#F4F4F4"), borderPadding=6, spaceAfter=8))
+styles.add(ParagraphStyle('CoverTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+                          fontSize=26, leading=32, alignment=TA_CENTER, spaceAfter=14,
+                          textColor=colors.HexColor('#2C3E50')))
 
-styles.add(ParagraphStyle(name="TableCell", fontSize=8.3, leading=11, fontName="Helvetica"))
-styles.add(ParagraphStyle(name="TableHeader", fontSize=8.7, leading=11, fontName="Helvetica-Bold",
-                           textColor=colors.white))
+styles.add(ParagraphStyle('CoverSub', parent=styles['Normal'], fontSize=14, leading=20,
+                          alignment=TA_CENTER, spaceAfter=8, textColor=colors.HexColor('#4A6FA5')))
 
-story = []
+styles.add(ParagraphStyle('CoverMeta', parent=styles['Normal'], fontSize=11, leading=16,
+                          alignment=TA_CENTER, spaceAfter=4))
 
-# ============================================================ COVER PAGE ====
-story.append(Spacer(1, 4*cm))
-story.append(Paragraph("Weather-Aware Smart Planner", styles["CoverTitle"]))
-story.append(Paragraph("A Python-Based Task Scheduling System with Weather Forecast Integration and Machine Learning", styles["CoverSub"]))
-story.append(Spacer(1, 2*cm))
-story.append(Paragraph("VITyarthi — Build Your Own Project", styles["CoverMeta"]))
-story.append(Paragraph("Project Report", styles["CoverMeta"]))
-story.append(Spacer(1, 2*cm))
-story.append(Paragraph("Submitted by: Rishabh Khandelwal", styles["CoverMeta"]))
-story.append(Paragraph("Program: B.Tech, Computer Science Engineering (AI/ML Specialization)", styles["CoverMeta"]))
-story.append(Paragraph("GitHub Repository: github.com/rishabhkhandelwal322-lgtm/Weather-Aware-Smart-Planner", styles["CoverMeta"]))
-story.append(PageBreak())
+styles.add(ParagraphStyle('SectionHeading', parent=styles['Normal'], fontName='Helvetica-Bold',
+                          fontSize=16, leading=20, spaceBefore=6, spaceAfter=10,
+                          textColor=colors.HexColor('#2C3E50')))
 
-# ============================================================ 2. INTRODUCTION ====
-story.append(Paragraph("1. Introduction", styles["SectionHeading"]))
-story.append(Paragraph(
-    "The Weather-Aware Smart Planner is a Python application designed to help individuals manage "
-    "their daily tasks in a way that accounts for real-world weather conditions. Traditional to-do "
-    "list and calendar applications treat time as the only planning variable, which frequently leads "
-    "to disrupted schedules when outdoor-dependent tasks are planned on days with unfavorable weather. "
-    "This project addresses that gap by combining live weather forecast data, a rule-based rescheduling "
-    "engine, a machine learning prediction layer, and a productivity analytics dashboard into a single, "
-    "cohesive system.",
-    styles["BodyJustify"]))
-story.append(Paragraph(
-    "The system is built entirely in Python, using SQLite for persistent storage, the OpenWeatherMap "
-    "API for live weather data, scikit-learn for a probabilistic prediction model, and Streamlit for an "
-    "interactive front-end dashboard. The project demonstrates the practical application of core "
-    "programming concepts — API integration, relational data modeling, rule-based automation, machine "
-    "learning, and user interface design — within a single, functioning application.",
-    styles["BodyJustify"]))
+styles.add(ParagraphStyle('SubHeading', parent=styles['Normal'], fontName='Helvetica-Bold',
+                          fontSize=12.5, leading=16, spaceBefore=10, spaceAfter=6,
+                          textColor=colors.HexColor('#4A6FA5')))
 
-# ============================================================ 3. PROBLEM STATEMENT ====
-story.append(Paragraph("2. Problem Statement", styles["SectionHeading"]))
-story.append(Paragraph(
-    "People frequently plan outdoor tasks — errands, workouts, commutes, events — without factoring in "
-    "short-term weather changes, leading to disrupted schedules, wasted time, and missed opportunities "
-    "to take advantage of favorable weather windows. Existing calendar and to-do applications treat time "
-    "as the only planning variable and ignore environmental conditions entirely. There is a clear need "
-    "for a planning tool that actively incorporates weather forecasts and trends into task scheduling "
-    "decisions, rather than leaving that correlation entirely to the user's manual judgment.",
-    styles["BodyJustify"]))
-story.append(Paragraph(
-    "This project is scoped as a single-user, local desktop/web application (delivered via Streamlit) "
-    "and does not include multi-user accounts, native mobile apps, or integration with third-party "
-    "calendar services in this iteration. The target users are students and individuals who plan "
-    "outdoor-dependent tasks and want a lightweight, automated assistant that reduces the manual effort "
-    "of checking forecasts and rescheduling tasks by hand.",
-    styles["BodyJustify"]))
+styles.add(ParagraphStyle('BodyJustify', parent=styles['Normal'], fontSize=10.2, leading=15,
+                          alignment=TA_JUSTIFY, spaceAfter=8))
 
-# ============================================================ 4. FUNCTIONAL REQUIREMENTS ====
-story.append(Paragraph("3. Functional Requirements", styles["SectionHeading"]))
-func_reqs = [
-    ("Task Management (CRUD)", "Users can create, view, filter, update, complete, and delete tasks. "
-     "Each task is tagged as 'outdoor' or 'indoor', with a priority level, an optional deadline, and a "
-     "scheduled date."),
-    ("Live Weather Forecast Retrieval", "The system fetches current conditions and a 5-day/3-hour "
-     "forecast from the OpenWeatherMap API, aggregates the 3-hour blocks into daily summaries, and "
-     "caches them locally to minimize redundant API calls."),
-    ("Manual Forecast Entry", "Users can manually insert or overwrite forecast data for a given date and "
-     "location without depending on the live API — useful for testing, offline use, or covering gaps in "
-     "the 5-day API window."),
-    ("Rule-Based Rescheduling Engine", "Outdoor tasks scheduled on a day with a rain probability above a "
-     "defined threshold are automatically identified and moved to the next available day within the "
-     "forecast window that meets the favorable-weather criteria."),
-    ("ML-Based Outdoor Window Prediction", "A trained scikit-learn classification model estimates the "
-     "probability (0–100%) that a given day is favorable for outdoor activity, based on temperature, "
-     "rain probability, wind speed, and seasonal month — providing a smoother, more nuanced signal than "
-     "the rule-based threshold alone."),
-    ("Notifications", "The system sends desktop notifications (via plyer) and, when configured, email "
-     "notifications (via SMTP) whenever a task is automatically rescheduled or cannot be rescheduled "
-     "within the forecast window."),
-    ("Productivity Analytics", "The system computes and visualizes task completion rates overall, by "
-     "task type (outdoor vs indoor), and correlated against weather conditions (rainy vs clear days), "
-     "producing chart images for reporting."),
-    ("Interactive Dashboard", "A Streamlit-based web dashboard ties all the above together into a single "
-     "interface with dedicated tabs for tasks, forecast, analytics, and activity history."),
-]
-for title, desc in func_reqs:
-    story.append(Paragraph(f"<b>{title}:</b> {desc}", styles["BodyJustify"]))
+styles.add(ParagraphStyle('Caption', parent=styles['Normal'], fontName='Helvetica-Oblique',
+                          fontSize=8.5, leading=11, alignment=TA_CENTER,
+                          textColor=colors.HexColor('#555555'), spaceBefore=4, spaceAfter=14))
 
-# ============================================================ 5. NON-FUNCTIONAL REQUIREMENTS ====
-story.append(Paragraph("4. Non-Functional Requirements", styles["SectionHeading"]))
-nf_table_data = [
-    ["Requirement", "How It Is Addressed"],
-    ["Performance", "Forecast data is cached in SQLite (one row per location/date) so repeated planning "
-     "cycles within the same day do not re-hit the external API."],
-    ["Reliability", "All task and forecast data is persisted in a local SQLite database (planner.db), "
-     "surviving application restarts. Every state-changing operation is wrapped in a transactional "
-     "connection context manager with rollback on failure."],
-    ["Security", "API keys and SMTP credentials are stored in a local .env file, loaded via "
-     "python-dotenv, and excluded from version control via .gitignore — never hardcoded in source."],
-    ["Usability", "The Streamlit dashboard provides a clear, tabbed interface requiring no configuration "
-     "to view tasks; sensible defaults (medium priority, current date) reduce data-entry friction."],
-    ["Scalability", "The modular design (separate storage, fetcher, planner, predictor, notifier, and "
-     "analytics modules) allows additional locations, users, or forecast sources to be added without "
-     "restructuring the core system."],
-    ["Maintainability", "Each module has a single, well-defined responsibility with docstrings and type-"
-     "consistent function signatures; the test suite (tests/) validates core planner and task-manager "
-     "behavior independently."],
-    ["Error Handling", "Custom exception classes (WeatherFetchError, ValidationError, NotificationError) "
-     "are raised for expected failure modes and caught at the UI/CLI boundary, so a missing API key or "
-     "invalid input never crashes the application outright."],
-]
-nf_table_data = [
-    [Paragraph(f"<b>{row[0]}</b>", styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[0]}</b>", styles["TableHeader"]),
-     Paragraph(row[1], styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[1]}</b>", styles["TableHeader"])]
-    for i, row in enumerate(nf_table_data)
-]
-nf_table = Table(nf_table_data, colWidths=[3.3*cm, 12.7*cm])
-nf_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2C3E50")),
-    ("VALIGN", (0,0), (-1,-1), "TOP"),
-    ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#CCCCCC")),
-    ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#F5F8FC")]),
-    ("LEFTPADDING", (0,0), (-1,-1), 6),
-    ("RIGHTPADDING", (0,0), (-1,-1), 6),
-    ("TOPPADDING", (0,0), (-1,-1), 5),
-    ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-]))
-story.append(nf_table)
-story.append(PageBreak())
+styles.add(ParagraphStyle('CodeBlock', parent=styles['Normal'], fontName='Courier', fontSize=8,
+                          leading=11, backColor=colors.HexColor('#F4F4F4'), borderPadding=6,
+                          spaceAfter=8))
 
-# ============================================================ 6. SYSTEM ARCHITECTURE ====
-story.append(Paragraph("5. System Architecture", styles["SectionHeading"]))
-story.append(Paragraph(
-    "The system follows a layered architecture. A presentation layer (the Streamlit dashboard, plus a "
-    "CLI entry point via task_manager.py) sits above an application logic layer containing the task "
-    "manager, planner engine, ML predictor, and analytics modules. These depend on two support services "
-    "— the weather fetcher and the notifier — which in turn depend on a single data layer (storage.py) "
-    "backed by a local SQLite database. External dependencies are limited to the OpenWeatherMap API and "
-    "the operating system's notification/SMTP facilities.",
-    styles["BodyJustify"]))
-story.append(Image(f"{DIAG}/architecture.png", width=16.5*cm, height=16.5*cm*(7.5/11)))
-story.append(Paragraph("Figure 5.1 — System Architecture Diagram", styles["Caption"]))
-story.append(PageBreak())
+styles.add(ParagraphStyle('TableCell', parent=styles['Normal'], fontName='Helvetica',
+                          fontSize=8.3, leading=11))
 
-# ============================================================ 7. DESIGN DIAGRAMS ====
-story.append(Paragraph("6. Design Diagrams", styles["SectionHeading"]))
+styles.add(ParagraphStyle('TableHeader', parent=styles['Normal'], fontName='Helvetica-Bold',
+                          fontSize=8.7, leading=11, textColor=colors.white))
 
-story.append(Paragraph("6.1 Use Case Diagram", styles["SubHeading"]))
-story.append(Paragraph(
-    "The single actor (User) interacts with eleven use cases spanning task management, forecast "
-    "handling, planning automation, notifications, and analytics.", styles["BodyJustify"]))
-story.append(Image(f"{DIAG}/use_case.png", width=15.5*cm, height=15.5*cm*(8/10)))
-story.append(Paragraph("Figure 6.1 — Use Case Diagram", styles["Caption"]))
-story.append(PageBreak())
 
-story.append(Paragraph("6.2 Workflow / Process Flow Diagram", styles["SubHeading"]))
-story.append(Paragraph(
-    "This diagram illustrates the core rescheduling logic executed each time a planning cycle runs: "
-    "each outdoor task's scheduled date is checked against the cached forecast, and tasks landing on a "
-    "high-rain-probability day are automatically moved to the next available favorable day, with a "
-    "notification sent on success and an unresolved flag raised if no suitable day exists in the window.",
-    styles["BodyJustify"]))
-story.append(Image(f"{DIAG}/workflow.png", width=13*cm, height=13*cm*(11.5/9.5)))
-story.append(Paragraph("Figure 6.2 — Planner Rescheduling Workflow", styles["Caption"]))
-story.append(PageBreak())
+def generate_pdf():
+    story = []
 
-story.append(Paragraph("6.3 Sequence Diagram", styles["SubHeading"]))
-story.append(Paragraph(
-    "The sequence diagram below traces a single 'Run Planning Cycle' interaction from the user clicking "
-    "the button in the dashboard through to the forecast fetch (with cache check), task evaluation, "
-    "rescheduling, and notification dispatch.", styles["BodyJustify"]))
-story.append(Image(f"{DIAG}/sequence.png", width=16.5*cm, height=16.5*cm*(10.6/12)))
-story.append(Paragraph("Figure 6.3 — Sequence Diagram: Run Planning Cycle", styles["Caption"]))
-story.append(PageBreak())
+    # Cover Page
+    story.extend([
+        Spacer(1, 4 * cm),
+        Paragraph("Weather-Aware Smart Planner", styles["CoverTitle"]),
+        Paragraph("A Smart Task Scheduler Integrating Live Weather Data and Machine Learning in Python", styles["CoverSub"]),
+        Spacer(1, 2 * cm),
+        Paragraph("VITyarthi — Project Work", styles["CoverMeta"]),
+        Paragraph("Project Report", styles["CoverMeta"]),
+        Spacer(1, 2 * cm),
+        Paragraph("Submitted by: Rishabh Khandelwal", styles["CoverMeta"]),
+        Paragraph("Program: B.Tech, CSE (AI/ML Specialization)", styles["CoverMeta"]),
+        Paragraph("GitHub Repository: github.com/rishabhkhandelwal322-lgtm/Weather-Aware-Smart-Planner", styles["CoverMeta"]),
+        PageBreak()
+    ])
 
-story.append(Paragraph("6.4 Class / Component Diagram", styles["SubHeading"]))
-story.append(Paragraph(
-    "Each Python module is represented as a UML-style class box showing its key attributes and public "
-    "functions, with dependency arrows showing which modules the dashboard orchestrates and how data "
-    "flows down to the shared storage layer.", styles["BodyJustify"]))
-story.append(Image(f"{DIAG}/class_diagram.png", width=16.5*cm, height=16.5*cm*(9/13)))
-story.append(Paragraph("Figure 6.4 — Class / Component Diagram", styles["Caption"]))
-story.append(PageBreak())
+    # Section 1: Introduction
+    story.append(Paragraph("1. Introduction", styles["SectionHeading"]))
+    story.append(Paragraph(
+        "The Weather-Aware Smart Planner was built around a simple problem: a normal calendar can tell us when something "
+        "is scheduled, but it usually does not tell us whether the weather is suitable for it. For example, an "
+        "outdoor errand may be planned for a day with heavy rain. The planner connects the forecast with the task "
+        "list and can move outdoor tasks when the conditions are not suitable. It also uses an ML model to give an "
+        "outdoor suitability score.",
+        styles["BodyJustify"]))
+    
+    story.append(Paragraph(
+        "The project was developed in Python. SQLite is used for local data storage, OpenWeatherMap provides live "
+        "forecasts, scikit-learn is used for the ML part, and Streamlit is used for the web interface. Putting these "
+        "pieces together gave us practical experience with APIs, databases, machine learning, and UI development.", styles["BodyJustify"]))
 
-story.append(Paragraph("6.5 ER Diagram / Database Schema", styles["SubHeading"]))
-story.append(Paragraph(
-    "The SQLite database consists of three tables: tasks, forecasts, and logs. The logs table has a "
-    "formal foreign-key relationship to tasks (one task generates zero or more log entries). The "
-    "forecasts table has no formal foreign key to tasks; instead, the planner joins them logically at "
-    "the application level by matching a task's scheduled_date against a forecast's (location, "
-    "forecast_date) pair.", styles["BodyJustify"]))
-story.append(Image(f"{DIAG}/er_diagram.png", width=16.5*cm, height=16.5*cm*(7/11)))
-story.append(Paragraph("Figure 6.5 — Entity-Relationship Diagram", styles["Caption"]))
-story.append(PageBreak())
+    # Section 2: Problem Statement
+    story.append(Paragraph("2. Problem Statement", styles["SectionHeading"]))
+    story.append(Paragraph(
+        "Outdoor activities such as running, errands, or other outdoor work can be affected by weather changes. If the "
+        "forecast is not checked before starting, it can result in a cancellation or an unnecessary trip. Normal task "
+        "management apps generally do not connect tasks with weather, so the user has to check both separately. This "
+        "project tries to reduce that extra step by checking the weather and adjusting suitable outdoor tasks when needed.", styles["BodyJustify"]))
+    
+    story.append(Paragraph(
+        "For the current version, the application is a local, single-user dashboard running through Streamlit. Cloud accounts, "
+        "mobile apps, and Google Calendar syncing are not included yet. The main aim is to give students or individual "
+        "users a simple way to reduce the manual work involved in checking weather for outdoor tasks.", styles["BodyJustify"]))
 
-# ============================================================ 8. DESIGN DECISIONS ====
-story.append(Paragraph("7. Design Decisions & Rationale", styles["SectionHeading"]))
-decisions = [
-    ("SQLite over a JSON file or a full DBMS", "SQLite provides real relational structure (enabling the "
-     "tasks–logs foreign key and SQL-based filtering/aggregation for analytics) without requiring a "
-     "separate database server, keeping the project fully self-contained and easy to run for evaluation."),
-    ("Rule-based rescheduling and ML prediction, in combination", "The planner's rule-based threshold "
-     "(rain probability > 0.5) is deterministic, auditable, and simple to explain and test. The ML "
-     "predictor was added on top as a complementary, probabilistic signal (0-100% confidence) that "
-     "learns smoother decision boundaries across temperature, wind, and seasonality — offering a richer "
-     "signal in the dashboard without replacing the transparent rule that actually drives rescheduling."),
-    ("Synthetic training data for the ML model", "No multi-year historical weather log was available for "
-     "this project's target location. A synthetic dataset was generated with realistic seasonal "
-     "temperature curves, monsoon-aware rain probability distributions, and deliberate label noise (7%) "
-     "so the model learns generalizable patterns rather than memorizing a hand-written rule."),
-    ("Caching forecast data rather than fetching on every call", "The OpenWeatherMap free tier has "
-     "request-rate constraints, and repeated calls within the same day would be wasteful. Caching by "
-     "(location, date) in the forecasts table means a full planning cycle costs at most one API call "
-     "per uncached day."),
-    ("Streamlit for the dashboard instead of Tkinter or Flask", "Streamlit allows a full interactive "
-     "multi-tab web UI to be built directly in Python with minimal boilerplate, making it well suited to "
-     "a project of this scope compared to hand-writing HTML/CSS/JS for Flask or building a native "
-     "Tkinter GUI."),
-    ("Graceful degradation for optional features", "Desktop and email notifications, and the ML "
-     "predictor, are all designed to fail silently (returning a status rather than raising) when not "
-     "configured or not yet trained, so the core task-and-planner functionality never depends on them "
-     "being present."),
-]
-for title, desc in decisions:
-    story.append(Paragraph(f"<b>{title}:</b> {desc}", styles["BodyJustify"]))
+    # Section 3: Functional Requirements
+    story.append(Paragraph("3. Functional Requirements", styles["SectionHeading"]))
+    reqs = [
+        ("Task CRUD Operations", "Users can add, view, update, finish, or delete tasks. Each entry takes a "
+         "name, priority level, optional target date, and a tag marking it indoor or outdoor."),
+        ("Live Forecast Fetching", "Retrieves 5-day/3-hour forecasts from OpenWeatherMap. The app aggregates "
+         "these short blocks into single-day summaries and caches them locally to limit API calls."),
+        ("Manual Weather Overrides", "Allows manually injecting weather values for testing, working offline, "
+         "or filling gaps when looking past the API's standard window."),
+        ("Automated Rescheduling Engine", "If an outdoor task sits on a day with high rain chance, the system "
+         "finds the next clear day in the forecast window and shifts the task there."),
+        ("ML Outdoor Score Predictor", "A scikit-learn classification model analyzes temperature, rain risk, "
+         "wind speed, and time of year to generate a 0-100% suitability score for outdoor activities."),
+        ("Alerts & Notifications", "Triggers desktop popups via plyer (or SMTP email alerts if set up) when "
+         "tasks get automatically moved or can't be safely rescheduled."),
+        ("Productivity Analytics", "Generates visual breakdowns of task completion rates, comparing clear vs. "
+         "rainy day outcomes to highlight efficiency gains."),
+        ("Streamlit Interface", "An interactive Web UI divided into logical tabs for organizing tasks, viewing "
+         "forecasts, checking analytics, and browsing execution logs."),
+    ]
+    for label, text in reqs:
+        story.append(Paragraph(f"<b>{label}:</b> {text}", styles["BodyJustify"]))
 
-# ============================================================ 9. IMPLEMENTATION DETAILS ====
-story.append(Paragraph("8. Implementation Details", styles["SectionHeading"]))
-story.append(Paragraph(
-    "The project is implemented as eleven Python modules under a src/ package, totaling roughly "
-    "2,100 lines of application code excluding tests and generated assets. Source code, tests, and "
-    "generated data/artifacts are kept in separate top-level folders (src/, tests/, data/, models/, "
-    "reports/) following standard Python project conventions.", styles["BodyJustify"]))
+    # Section 4: Non-Functional Requirements
+    story.append(Paragraph("4. Non-Functional Requirements", styles["SectionHeading"]))
+    nf_raw = [
+        ("Requirement", "How It Is Addressed"),
+        ("Performance", "Weather responses are saved in SQLite per date/location so recurring runs don't hit "
+         "the OpenWeather API unnecessarily."),
+        ("Reliability", "Task and weather state persist locally in planner.db. Database changes use "
+         "transaction wrappers so failed writes roll back safely without corrupting data."),
+        ("Security", "Sensitive keys sit inside a local .env file using python-dotenv. They are explicitly "
+         "git-ignored so secrets never reach the repository."),
+        ("Usability", "Streamlit handles UI rendering cleanly. Common fields like current date and medium priority "
+         "are pre-filled to keep data entry fast."),
+        ("Scalability", "Modules stay isolated (storage, fetcher, engine, predictor, notifications). New weather "
+         "sources or storage backends can be added with minimal refactoring."),
+        ("Maintainability", "Code follows clear single-responsibility modules with unit coverage in tests/ "
+         "checking core rescheduling rules."),
+        ("Error Handling", "Custom error handles (e.g., WeatherFetchError) catch API failures or bad user inputs "
+         "early so the dashboard doesn't crash unexpectedly.")
+    ]
 
-impl_table_data = [
-    ["Module", "Responsibility", "Key Libraries"],
-    ["src/storage.py", "SQLite schema, connection management, CRUD for tasks/forecasts/logs", "sqlite3"],
-    ["src/weather_fetcher.py", "Live API fetch + aggregation, caching, manual forecast entry", "requests, python-dotenv"],
-    ["src/planner.py", "Rule-based rescheduling engine, good-window lookup", "storage, weather_fetcher"],
-    ["src/predictor.py", "Synthetic data generation, model training, probability prediction", "scikit-learn, pandas, joblib"],
-    ["src/task_manager.py", "Input validation, task CRUD wrapper, CLI interface", "argparse"],
-    ["src/notifier.py", "Desktop and email notifications with graceful fallback", "plyer, smtplib"],
-    ["src/analytics.py", "Completion-rate stats, weather correlation, chart generation", "matplotlib"],
-    ["src/dashboard.py", "Streamlit UI tying every module together (4 tabs)", "streamlit"],
-    ["src/run_interactive.py", "Menu-driven terminal interface for non-technical users; renders "
-     "colored bar/pie charts in-terminal and can pop up chart images in a window", "termcharts, rich, matplotlib"],
-    ["src/seed_demo_data.py", "One-off script to populate realistic sample tasks/forecasts for demos", "storage"],
-]
-impl_table_data = [
-    [Paragraph(f"<b>{row[0]}</b>", styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[0]}</b>", styles["TableHeader"]),
-     Paragraph(row[1], styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[1]}</b>", styles["TableHeader"]),
-     Paragraph(row[2], styles["TableCell"]) if i > 0 else Paragraph(f"<b>{row[2]}</b>", styles["TableHeader"])]
-    for i, row in enumerate(impl_table_data)
-]
-impl_table = Table(impl_table_data, colWidths=[4.3*cm, 7.9*cm, 3.8*cm])
-impl_table.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2C3E50")),
-    ("VALIGN", (0,0), (-1,-1), "TOP"),
-    ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#CCCCCC")),
-    ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#F5F8FC")]),
-    ("LEFTPADDING", (0,0), (-1,-1), 6),
-    ("RIGHTPADDING", (0,0), (-1,-1), 6),
-    ("TOPPADDING", (0,0), (-1,-1), 5),
-    ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-]))
-story.append(impl_table)
-story.append(Spacer(1, 12))
+    nf_table_cells = []
+    for idx, (title, desc) in enumerate(nf_raw):
+        style_type = "TableHeader" if idx == 0 else "TableCell"
+        nf_table_cells.append([
+            Paragraph(f"<b>{title}</b>", styles[style_type]),
+            Paragraph(f"<b>{desc}</b>" if idx == 0 else desc, styles[style_type])
+        ])
 
-story.append(Paragraph("Example: the core rescheduling logic (src/planner.py)", styles["SubHeading"]))
-code_snippet = """def run_planning_cycle(location):
+    nf_table = Table(nf_table_cells, colWidths=[3.3 * cm, 12.7 * cm])
+    nf_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F8FC")]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.extend([nf_table, PageBreak()])
+
+    # Section 5: Architecture
+    story.append(Paragraph("5. System Architecture", styles["SectionHeading"]))
+    story.append(Paragraph(
+        "The application uses a standard layered setup. The Streamlit UI and CLI interface form the entry "
+        "layer, passing calls into core business modules (task operations, scheduling, ML predictions, and analytics). "
+        "These core services talk to background modules—namely the OpenWeather wrapper and notification handlers—which "
+        "interact directly with SQLite for storage.", styles["BodyJustify"]))
+    story.append(Image(str(diag_path / "architecture.png"), width=16.5 * cm, height=16.5 * cm * (7.5 / 11)))
+    story.append(Paragraph("Figure 5.1 — System Architecture Diagram", styles["Caption"]))
+    story.append(PageBreak())
+
+    # Section 6: Diagrams
+    story.append(Paragraph("6. Design Diagrams", styles["SectionHeading"]))
+
+    story.append(Paragraph("6.1 Use Case Diagram", styles["SubHeading"]))
+    story.append(Paragraph("This diagram shows the main things a user can do in the system, including managing tasks, getting weather data, running scheduling rules, and viewing analytics.", styles["BodyJustify"]))
+    story.append(Image(str(diag_path / "use_case.png"), width=15.5 * cm, height=15.5 * cm * (8 / 10)))
+    story.append(Paragraph("Figure 6.1 — Use Case Diagram", styles["Caption"]))
+    story.append(PageBreak())
+
+    story.append(Paragraph("6.2 Workflow / Process Flow Diagram", styles["SubHeading"]))
+    story.append(Paragraph("This shows the main flow of a planning cycle. Pending outdoor tasks are checked against the forecast, and tasks on rainy days can be moved to the next suitable clear day. The user is also notified when a change is made.", styles["BodyJustify"]))
+    story.append(Image(str(diag_path / "workflow.png"), width=13 * cm, height=13 * cm * (11.5 / 9.5)))
+    story.append(Paragraph("Figure 6.2 — Planner Rescheduling Workflow", styles["Caption"]))
+    story.append(PageBreak())
+
+    story.append(Paragraph("6.3 Sequence Diagram", styles["SubHeading"]))
+    story.append(Paragraph("This diagram follows what happens after the user selects 'Run Planning Cycle'. It covers checking the cached forecast, deciding whether a task needs to move, changing the task date, and sending notifications.", styles["BodyJustify"]))
+    story.append(Image(str(diag_path / "sequence.png"), width=16.5 * cm, height=16.5 * cm * (10.6 / 12)))
+    story.append(Paragraph("Figure 6.3 — Sequence Diagram: Run Planning Cycle", styles["Caption"]))
+    story.append(PageBreak())
+
+    story.append(Paragraph("6.4 Class / Component Diagram", styles["SubHeading"]))
+    story.append(Paragraph("This gives a structural view of the project modules, their main functions, and how the different components connect with the SQLite storage layer.", styles["BodyJustify"]))
+    story.append(Image(str(diag_path / "class_diagram.png"), width=16.5 * cm, height=16.5 * cm * (9 / 13)))
+    story.append(Paragraph("Figure 6.4 — Class / Component Diagram", styles["Caption"]))
+    story.append(PageBreak())
+
+    story.append(Paragraph("6.5 ER Diagram / Database Schema", styles["SubHeading"]))
+    story.append(Paragraph("This diagram shows the database tables used for tasks, forecasts, and logs. The logs table connects to tasks through foreign keys, while forecast data is looked up using the date and location.", styles["BodyJustify"]))
+    story.append(Image(str(diag_path / "er_diagram.png"), width=16.5 * cm, height=16.5 * cm * (7 / 11)))
+    story.append(Paragraph("Figure 6.5 — Entity-Relationship Diagram", styles["Caption"]))
+    story.append(PageBreak())
+
+    # Section 7: Design Decisions
+    story.append(Paragraph("7. Design Decisions & Rationale", styles["SectionHeading"]))
+    design_decisions = [
+        ("SQLite over flat JSON or heavy SQL servers", "SQLite was a practical choice because the project did not need a separate database server. It still gives us relational queries, foreign keys, and the data operations needed for the charts."),
+        ("Combining hard rules with ML scoring", "The rescheduling rule uses more than 50% rain chance, which makes the decision easy to understand and test. The ML model is used separately to give a 'favorable weather' score based on temperature, wind, and seasonality."),
+        ("Using synthetic dataset for ML training", "Since we did not have years of localized weather history, we created a synthetic dataset with seasonal temperatures, monsoon rain trends, and 7% noise. The noise was added so the model would not simply learn an overly simple pattern."),
+        ("Caching daily weather forecasts", "During testing, the same weather data can be requested several times. To avoid unnecessary OpenWeather API calls, weather entries are stored locally by location and date, so later planning cycles can use the cached rows."),
+        ("Choosing Streamlit over Flask or Tkinter", "Streamlit let us build the multi-tab dashboard mostly in Python. This meant we did not have to create a separate HTML/JavaScript frontend, and it was simpler for this project than using a desktop GUI."),
+        ("Graceful feature fallback", "If desktop notifications are not available or the ML model has not been trained, the application records a warning "
+         "instead of stopping the rest of the process.")
+    ]
+    for topic, rationale in design_decisions:
+        story.append(Paragraph(f"<b>{topic}:</b> {rationale}", styles["BodyJustify"]))
+
+    # Section 8: Implementation Details
+    story.append(Paragraph("8. Implementation Details", styles["SectionHeading"]))
+    story.append(Paragraph(
+        "The project has 11 modules under src/ and around 2,100 lines of Python code, excluding automated tests and asset "
+        "builders. Source code, tests, trained models, and generated outputs are kept separate so the project is easier to work with.", styles["BodyJustify"]))
+
+    modules_meta = [
+        ("Module", "Responsibility", "Key Libraries"),
+        ("src/storage.py", "SQLite schema setup, connection handling, task/forecast CRUD operations", "sqlite3"),
+        ("src/weather_fetcher.py", "Live weather API fetching, 3-hr aggregation, local caching", "requests, python-dotenv"),
+        ("src/planner.py", "Rescheduling engine logic, good-weather window searches", "storage, weather_fetcher"),
+        ("src/predictor.py", "Synthetic dataset generation, ML training pipeline, prediction helper", "scikit-learn, pandas, joblib"),
+        ("src/task_manager.py", "CLI parser, user input validation layer", "argparse"),
+        ("src/notifier.py", "Desktop popups and email dispatching with silent failover", "plyer, smtplib"),
+        ("src/analytics.py", "Calculates task completion metrics and outputs chart graphics", "matplotlib"),
+        ("src/dashboard.py", "Streamlit web interface orchestrating all modules across 4 tabs", "streamlit"),
+        ("src/run_interactive.py", "CLI menu navigation with terminal charts and image popup support", "termcharts, rich, matplotlib"),
+        ("src/seed_demo_data.py", "Utility script for pre-populating sample tasks and weather history", "storage")
+    ]
+
+    impl_table_cells = []
+    for idx, (m, r, l) in enumerate(modules_meta):
+        style_type = "TableHeader" if idx == 0 else "TableCell"
+        impl_table_cells.append([
+            Paragraph(f"<b>{m}</b>", styles[style_type]),
+            Paragraph(f"<b>{r}</b>" if idx == 0 else r, styles[style_type]),
+            Paragraph(f"<b>{l}</b>" if idx == 0 else l, styles[style_type])
+        ])
+
+    impl_table = Table(impl_table_cells, colWidths=[4.3 * cm, 7.9 * cm, 3.8 * cm])
+    impl_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F8FC")]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.extend([impl_table, Spacer(1, 12)])
+
+    story.append(Paragraph("Core Rescheduling Implementation (src/planner.py)", styles["SubHeading"]))
+    code_snippet = """def run_planning_cycle(location):
     forecast_days = weather_fetcher.get_5day_forecast(location)
     forecast_by_date = {f["forecast_date"]: f for f in forecast_days}
     outdoor_tasks = storage.get_tasks(status="pending", task_type="outdoor")
@@ -325,160 +283,115 @@ code_snippet = """def run_planning_cycle(location):
         new_date = _find_next_good_day(forecast_by_date, after_date=task["scheduled_date"])
         if new_date:
             storage.reschedule_task(task["id"], new_date, reason="...")"""
-story.append(Paragraph(code_snippet.replace("\n", "<br/>").replace(" ", "&nbsp;"), styles["CodeBlock"]))
-story.append(PageBreak())
 
-# ============================================================ 10. SCREENSHOTS / RESULTS ====
-story.append(Paragraph("9. Screenshots / Results", styles["SectionHeading"]))
-story.append(Paragraph(
-    "The following charts are generated by analytics.py from sample task and forecast data, "
-    "demonstrating the system's ability to correlate task completion outcomes with weather conditions.",
-    styles["BodyJustify"]))
-story.append(Image(f"{CHARTS}/weather_correlation.png", width=13*cm, height=13*cm*(4/6)))
-story.append(Paragraph("Figure 9.1 — Outdoor Task Completion Rate vs Weather Condition. Clear-day "
-                        "completion (83%) substantially exceeds rainy-day completion (33%), demonstrating "
-                        "the real-world value of weather-aware rescheduling.", styles["Caption"]))
-story.append(Image(f"{CHARTS}/completion_by_type.png", width=13*cm, height=13*cm*(4/6)))
-story.append(Paragraph("Figure 9.2 — Task Completion Rate: Outdoor vs Indoor Tasks", styles["Caption"]))
-story.append(Image(f"{CHARTS}/status_breakdown.png", width=10*cm, height=10*cm))
-story.append(Paragraph("Figure 9.3 — Overall Task Status Breakdown", styles["Caption"]))
-story.append(PageBreak())
+    story.append(Paragraph(code_snippet.replace("\n", "<br/>").replace(" ", "&nbsp;"), styles["CodeBlock"]))
+    story.append(PageBreak())
 
-# ============================================================ 11. TESTING APPROACH ====
-story.append(Paragraph("10. Testing Approach", styles["SectionHeading"]))
-story.append(Paragraph(
-    "Testing combined automated unit tests (in the tests/ directory, run via pytest) with manual "
-    "end-to-end verification of each module as it was built:", styles["BodyJustify"]))
-testing_items = [
-    "storage.py was verified by creating a task, rescheduling it, caching a forecast, and confirming "
-    "all fields round-tripped correctly through the database, including the activity log.",
-    "weather_fetcher.py's aggregation logic was tested against a mocked OpenWeatherMap response "
-    "containing mixed clear/rainy 3-hour blocks, verifying the daily rollup correctly took the maximum "
-    "rain probability and wind speed, and the most frequent condition label.",
-    "planner.py was tested end-to-end with a mocked forecast containing one rainy day followed by clear "
-    "days, confirming a task scheduled on the rainy day was correctly moved to the next clear day and "
-    "logged.",
-    "predictor.py's trained model was validated with an 80/20 train-test split, achieving 93.8% test "
-    "accuracy and a 0.933 ROC-AUC score, then sanity-checked with manually chosen extreme cases (e.g. "
-    "a calm clear day scoring 91.3% favorable vs a heavy-rain day scoring 3.6%).",
-    "task_manager.py's CLI and validation layer were tested with both valid inputs and deliberately "
-    "invalid ones (empty title, non-existent task ID) to confirm errors are reported cleanly without "
-    "crashing.",
-    "notifier.py was tested with no SMTP/desktop configuration present, confirming it reports failure "
-    "status without raising an exception that would interrupt a planning cycle.",
-    "analytics.py and dashboard.py were verified by seeding a realistic sample dataset (seed_demo_data.py) "
-    "and confirming the computed statistics matched the seeded data exactly, and that the Streamlit app "
-    "served without runtime errors across all four tabs.",
-    "run_interactive.py was tested with simulated input sequences covering every menu option, including "
-    "deliberately invalid input (bad task IDs, non-numeric predictor values, out-of-range menu choices) "
-    "to confirm the friendly error handling never lets an exception escape to the user. A specific "
-    "regression was caught and fixed this way: passing two identical values (e.g. 0% and 0%) to the "
-    "third-party termcharts library triggers a division-by-zero inside that library, so a safe wrapper "
-    "was added to detect degenerate data and fall back to a plain-text bar chart instead of crashing.",
-    "After restructuring the codebase into a src/ package, the full test suite and every standalone "
-    "script were re-run from the project root to confirm all inter-module imports and the data/models/"
-    "reports path references (which are relative to each file's own location) still resolved correctly "
-    "outside of the src/ folder.",
-]
-story.append(ListFlowable(
-    [ListItem(Paragraph(item, styles["BodyJustify"]), leftIndent=12) for item in testing_items],
-    bulletType="bullet"))
+    # Section 9: Results
+    story.append(Paragraph("9. Screenshots / Results", styles["SectionHeading"]))
+    story.append(Paragraph("The following charts are produced by analytics.py from the sample data in the project. They are mainly used to compare task completion under different weather conditions.", styles["BodyJustify"]))
+    story.append(Image(str(charts_path / "weather_correlation.png"), width=13 * cm, height=13 * cm * (4 / 6)))
+    story.append(Paragraph("Figure 9.1 — Task Completion: Clear vs Rainy Days. Clear day completion (83%) drops significantly on rainy days (33%), confirming why automated rescheduling is useful.", styles["Caption"]))
+    story.append(Image(str(charts_path / "completion_by_type.png"), width=13 * cm, height=13 * cm * (4 / 6)))
+    story.append(Paragraph("Figure 9.2 — Task Completion Rate: Outdoor vs Indoor Tasks", styles["Caption"]))
+    story.append(Image(str(charts_path / "status_breakdown.png"), width=10 * cm, height=10 * cm))
+    story.append(Paragraph("Figure 9.3 — Overall Task Status Breakdown", styles["Caption"]))
+    story.append(PageBreak())
 
-# ============================================================ 12. CHALLENGES FACED ====
-story.append(Paragraph("11. Challenges Faced", styles["SectionHeading"]))
-challenges = [
-    ("Aggregating 3-hour forecast blocks into daily summaries", "The OpenWeatherMap free tier only "
-     "provides 3-hour resolution data, not true daily summaries. This required writing custom "
-     "aggregation logic (worst-case rain probability, maximum wind, average temperature, most frequent "
-     "condition) to produce a meaningful single value per day."),
-    ("Avoiding an unrealistically perfect ML model", "An early version of the synthetic training data "
-     "produced a model with near-100% accuracy because the label was a deterministic function of the "
-     "features. Deliberate label noise (7%) was introduced to force the model to learn a genuinely "
-     "probabilistic, generalizable decision boundary instead of memorizing the rule."),
-    ("Windows-specific tooling friction", "Setting up the local development environment involved several "
-     "Windows-specific obstacles: PowerShell here-string parsing issues when creating .gitignore, PATH "
-     "not including the pip user-script directory (breaking direct `streamlit`/`pytest` commands until "
-     "invoked via `python -m`), and Git line-ending (LF/CRLF) warnings."),
-    ("Git repository history conflicts", "An initial mismatch between the local repository history and "
-     "GitHub's auto-generated default file required resolving a merge conflict on README.md using "
-     "`git pull --allow-unrelated-histories` before the first push would succeed."),
-    ("Unrelated template code contaminating the repository", "At one point, GitHub Codespaces auto-"
-     "generated a .devcontainer/devcontainer.json, and an unrelated FastAPI boilerplate (api.py, "
-     "scheduler.py, test_api.py, plus a stray block of code appended directly onto the end of "
-     "dashboard.py) appeared in the repository. This was diagnosed by comparing the deployed error "
-     "traceback against the actual source and cross-checking `git ls-files`, then removed entirely so "
-     "the repository only contains code the project actually uses."),
-    ("Cloud deployment failing where local execution succeeded", "The Streamlit Community Cloud "
-     "deployment initially failed on the Forecast tab because .env (correctly excluded from version "
-     "control) doesn't exist on the cloud server; this was resolved by configuring the API key as a "
-     "Streamlit secret instead, which Streamlit automatically exposes as an environment variable. A "
-     "second cloud-only failure occurred because a brand-new deployment starts with a completely empty "
-     "database: analytics.py's status-breakdown chart function correctly returned None when there was no "
-     "data to plot, but the caller stringified that None into the literal text \"None\" before passing it "
-     "to Streamlit's image-display call, which then tried to open a file named \"None\" and crashed. This "
-     "was fixed by preserving the real None value through the return chain and having the dashboard check "
-     "for it explicitly before attempting to render an image."),
-]
-for title, desc in challenges:
-    story.append(Paragraph(f"<b>{title}:</b> {desc}", styles["BodyJustify"]))
+    # Section 10: Testing
+    story.append(Paragraph("10. Testing Approach", styles["SectionHeading"]))
+    story.append(Paragraph("Testing was done in two ways: automated unit tests using pytest and manual checks of the CLI and Streamlit interface. This helped us catch both logic errors and issues that only appeared when using the application.", styles["BodyJustify"]))
+    
+    test_steps = [
+        "Verified storage.py by creating tasks, changing schedules, storing forecasts, and confirming data consistency in SQLite logs.",
+        "Tested weather_fetcher.py against mock 3-hour API responses to make sure aggregation correctly selected maximum rain probability and wind speeds.",
+        "Executed end-to-end planner tests with fake weather data, confirming rainy-day tasks shifted to the right target date.",
+        "Evaluated predictor.py with an 80/20 train-test split, hitting 93.8% accuracy (0.933 ROC-AUC), and sanity-checked edge cases manually.",
+        "Tested CLI arguments in task_manager.py with invalid dates and empty parameters to verify error messages display properly.",
+        "Verified notifier.py fallback behaviors when email secrets or desktop notification drivers were missing.",
+        "Seeded demo datasets via seed_demo_data.py to ensure chart outputs matched actual database values without Streamlit errors.",
+        "Fixed a termcharts edge-case in run_interactive.py where passing identical zero values caused division-by-zero crashes, adding safe fallback formatting.",
+        "Ran full regression test runs after organizing modules under src/ to verify relative import paths and path resolutions."
+    ]
+    story.append(ListFlowable(
+        [ListItem(Paragraph(step, styles["BodyJustify"]), leftIndent=12) for step in test_steps],
+        bulletType="bullet"))
 
-story.append(PageBreak())
+    # Section 11: Challenges
+    story.append(Paragraph("11. Challenges Faced", styles["SectionHeading"]))
+    challenges = [
+        ("Summarizing 3-hour weather intervals", "OpenWeather's free tier supplies 3-hour chunks rather than daily "
+         "forecasts. Aggregation rules had to be written to pick worst-case rain probabilities and maximum wind speeds per day."),
+        ("Avoiding overly simplistic ML accuracy", "Initial synthetic datasets were too predictable, leading "
+         "to 100% accuracy models. Adding a 7% noise factor forced the classifier to learn realistic, generalizable boundaries."),
+        ("Environment setup on Windows", "Troubleshot PowerShell execution issues, missing pip bin paths for "
+         "Streamlit CLI execution, and Git CRLF line-ending discrepancies."),
+        ("Git merge conflicts on setup", "Resolved initial commit history conflicts with default remote repository "
+         "files using git pull --allow-unrelated-histories."),
+        ("Cleaning up rogue files", "Cleaned leftover Codespaces devcontainer settings and unneeded boilerplate "
+         "files after cross-checking repository files with git ls-files."),
+        ("Handling empty databases on Streamlit Cloud", "Discovered a deployment bug where empty database "
+         "returns triggered stringified 'None' paths in image components. Solved it with explicit check logic in the dashboard.")
+    ]
+    for header, detail in challenges:
+        story.append(Paragraph(f"<b>{header}:</b> {detail}", styles["BodyJustify"]))
+    story.append(PageBreak())
 
-# ============================================================ 13. LEARNINGS ====
-story.append(Paragraph("12. Learnings & Key Takeaways", styles["SectionHeading"]))
-learnings = [
-    "Designing a clean separation between a rule-based system and a machine learning layer clarified "
-    "when each approach is appropriate: rules for deterministic, explainable decisions; ML for a "
-    "smoother, probabilistic signal layered on top.",
-    "Caching strategy matters even in small projects — without it, a free-tier API's rate limits would "
-    "make repeated testing impractical.",
-    "Synthetic data generation requires deliberate imperfection (label noise, realistic variance) to "
-    "produce a model that behaves like a real-world predictor rather than an overfit lookup table.",
-    "Building a project incrementally, module by module, with a working test at each stage (storage, "
-    "then fetcher, then planner, then the UI) made integration far less error-prone than writing "
-    "everything and testing only at the end.",
-    "Version control workflows have real friction points beyond just 'git add, commit, push' — merge "
-    "conflicts, cross-platform line endings, and PATH configuration are practical skills as important as "
-    "the application code itself.",
-]
-story.append(ListFlowable(
-    [ListItem(Paragraph(item, styles["BodyJustify"]), leftIndent=12) for item in learnings],
-    bulletType="bullet"))
+    # Section 12: Learnings
+    story.append(Paragraph("12. Learnings & Key Takeaways", styles["SectionHeading"]))
+    learnings = [
+        "One thing we learned was that not every part of the application needs machine learning. The scheduling rules are easier to control with fixed conditions, while the ML model is useful for giving a probability-style score in the UI.",
+        "Caching became important during development because the weather API has limits. Saving the forecast locally meant we could test the planner repeatedly without making the same API request every time.",
+        "We also learned that synthetic data can be too easy for a model if the generated values follow the labels too closely. Adding realistic variation and noise made the training data less predictable.",
+        "Working on the modules one at a time made debugging easier. We could test storage, weather fetching, and planning separately before connecting everything to the Streamlit interface.",
+        "A working program is only part of the project. We also had to deal with Git history, environment variables, Windows-specific issues, and differences in file paths between environments."
+    ]
+    story.append(ListFlowable(
+        [ListItem(Paragraph(l, styles["BodyJustify"]), leftIndent=12) for l in learnings],
+        bulletType="bullet"))
 
-# ============================================================ 14. FUTURE ENHANCEMENTS ====
-story.append(Paragraph("13. Future Enhancements", styles["SectionHeading"]))
-future = [
-    "Multi-user support with authentication, allowing the planner to be deployed as a shared service.",
-    "Integration with real historical weather archives (e.g. Open-Meteo's historical API) to replace "
-    "the synthetic training dataset with genuine location-specific climate patterns.",
-    "Two-way sync with external calendars (Google Calendar) so rescheduled tasks update automatically "
-    "outside the app.",
-    "A mobile-friendly companion view or push notifications instead of desktop-only alerts.",
-    "Expanding the rescheduling rule set beyond rain probability to jointly weigh temperature extremes, "
-    "wind, and air quality.",
-]
-story.append(ListFlowable(
-    [ListItem(Paragraph(item, styles["BodyJustify"]), leftIndent=12) for item in future],
-    bulletType="bullet"))
+    # Section 13: Future Enhancements
+    story.append(Paragraph("13. Future Enhancements", styles["SectionHeading"]))
+    future_work = [
+        "Adding multi-user accounts and authentication for shared deployment.",
+        "Connecting real climate archive APIs (like Open-Meteo) to replace synthetic training datasets.",
+        "Two-way integration with external services like Google Calendar or Outlook.",
+        "Mobile companion app or SMS/push alerts for on-the-go notifications.",
+        "Expanding rescheduling rules to consider air quality, humidity, and extreme temperatures."
+    ]
+    story.append(ListFlowable(
+        [ListItem(Paragraph(fw, styles["BodyJustify"]), leftIndent=12) for fw in future_work],
+        bulletType="bullet"))
 
-# ============================================================ 15. REFERENCES ====
-story.append(Paragraph("14. References", styles["SectionHeading"]))
-references = [
-    "OpenWeatherMap API Documentation — https://openweathermap.org/api",
-    "Streamlit Documentation — https://docs.streamlit.io",
-    "scikit-learn Documentation — https://scikit-learn.org/stable/documentation.html",
-    "Python sqlite3 Documentation — https://docs.python.org/3/library/sqlite3.html",
-    "ReportLab User Guide — https://www.reportlab.com/docs/reportlab-userguide.pdf",
-    "matplotlib Documentation — https://matplotlib.org/stable/",
-]
-story.append(ListFlowable(
-    [ListItem(Paragraph(item, styles["BodyJustify"]), leftIndent=12) for item in references],
-    bulletType="bullet"))
+    # Section 14: References
+    story.append(Paragraph("14. References", styles["SectionHeading"]))
+    refs = [
+        "OpenWeatherMap API Documentation — https://openweathermap.org/api",
+        "Streamlit Documentation — https://docs.streamlit.io",
+        "scikit-learn Documentation — https://scikit-learn.org/stable/documentation.html",
+        "Python sqlite3 Documentation — https://docs.python.org/3/library/sqlite3.html",
+        "ReportLab User Guide — https://www.reportlab.com/docs/reportlab-userguide.pdf",
+        "matplotlib Documentation — https://matplotlib.org/stable/"
+    ]
+    story.append(ListFlowable(
+        [ListItem(Paragraph(r, styles["BodyJustify"]), leftIndent=12) for r in refs],
+        bulletType="bullet"))
 
-# ============================================================ BUILD ====
-doc = SimpleDocTemplate(OUT, pagesize=A4,
-                         topMargin=2*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm,
-                         title="Weather-Aware Smart Planner - Project Report",
-                         author="Rishabh Khandelwal")
-doc.build(story)
-print(f"Report built: {OUT}")
+    # Render Document
+    doc = SimpleDocTemplate(
+        str(out_pdf),
+        pagesize=A4,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+        leftMargin=2 * cm,
+        rightMargin=2 * cm,
+        title="Weather-Aware Smart Planner - Project Report",
+        author="Rishabh Khandelwal"
+    )
+    doc.build(story)
+    print(f"Report built successfully: {out_pdf}")
+
+
+if __name__ == "__main__":
+    generate_pdf()
+    

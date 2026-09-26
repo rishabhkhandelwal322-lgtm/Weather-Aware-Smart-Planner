@@ -1,156 +1,132 @@
-"""
-notifier.py
-------------
-Sends notifications when the planner reschedules a task or finds a
-favorable outdoor window. Supports two channels, both optional and
-independently configured via environment variables:
-
-  - Desktop notifications (via plyer) -- works out of the box, no
-    configuration needed, but only shows on the machine actually
-    running the script.
-  - Email (via smtplib) -- requires SMTP credentials in .env:
-        SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, NOTIFY_EMAIL_TO
-
-If email isn't configured, notifier silently skips it and falls back
-to desktop only -- it never crashes the planning run just because
-notifications aren't fully set up.
-"""
-
 import os
+import sys
 import smtplib
 from email.mime.text import MIMEText
-
 from dotenv import load_dotenv
 
+# load environmental variables from .env
 load_dotenv()
 
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-NOTIFY_EMAIL_TO = os.getenv("NOTIFY_EMAIL_TO")
+HOST = os.getenv("SMTP_HOST")
+PORT = os.getenv("SMTP_PORT", 587)
+USER = os.getenv("SMTP_USER")
+PASS = os.getenv("SMTP_PASSWORD")
+TO = os.getenv("NOTIFY_EMAIL_TO")
 
 
 class NotificationError(Exception):
-    """Raised when a notification channel fails to send."""
+    pass
 
 
-def _email_configured():
-    return all([SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFY_EMAIL_TO])
-
-
-def send_desktop_notification(title, message):
-    """
-    Show a desktop popup notification. Fails silently (returns False)
-    on platforms/environments where this isn't supported, rather than
-    crashing the app -- desktop notifications are a nice-to-have.
-    """
+def send_desktop_notification(title, msg):
     try:
-        from plyer import notification
-        notification.notify(title=title, message=message, timeout=8)
+        import plyer
+        plyer.notification.notify(title=title, message=msg, timeout=5)
         return True
-    except Exception:
+    except:
+        return False # plyer module not present or OS popup error
+
+
+def send_email_notification(sub, text):
+    # check credentials
+    if not (HOST and USER and PASS and TO):
         return False
 
-
-def send_email_notification(subject, body):
-    """
-    Send an email notification via SMTP. Raises NotificationError on
-    failure. Returns True on success. If email isn't configured at
-    all, returns False without raising (nothing to send).
-    """
-    if not _email_configured():
-        return False
-
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = SMTP_USER
-    msg["To"] = NOTIFY_EMAIL_TO
-
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, [NOTIFY_EMAIL_TO], msg.as_string())
+        p = int(PORT)
+        m = MIMEText(text)
+        m["Subject"] = sub
+        m["From"] = USER
+        m["To"] = TO
+
+        # connecting via smtplib
+        server = smtplib.SMTP(HOST, p, timeout=10)
+        server.starttls()
+        server.login(USER, PASS)
+        server.sendmail(USER, [TO], m.as_string())
+        server.quit()
         return True
-    except (smtplib.SMTPException, OSError) as exc:
-        raise NotificationError(f"Failed to send email: {exc}") from exc
+    except Exception as e:
+        raise NotificationError("Email failed: " + str(e))
 
 
-def notify(title, message, channels=("desktop", "email")):
-    """
-    Send a notification through the requested channels. Returns a
-    dict reporting which channels actually succeeded, so callers
-    (e.g. planner.py) can log or display the outcome without the
-    notifier ever raising and interrupting the planning cycle.
-    """
-    results = {"desktop": False, "email": False, "email_error": None}
+def notify(title, message, channels=["desktop", "email"]):
+    res = {"desktop": False, "email": False, "email_error": None}
 
     if "desktop" in channels:
-        results["desktop"] = send_desktop_notification(title, message)
+        res["desktop"] = send_desktop_notification(title, message)
 
     if "email" in channels:
         try:
-            results["email"] = send_email_notification(title, message)
-        except NotificationError as exc:
-            results["email_error"] = str(exc)
+            res["email"] = send_email_notification(title, message)
+        except NotificationError as e:
+            res["email_error"] = str(e)
 
-    return results
+    return res
 
 
-# ---------------------------------------------------- planner integration ----
+# --- Functions called by planner script ---
 
 def notify_reschedule(task_title, old_date, new_date, reason=""):
-    """Notify the user that a task was automatically rescheduled."""
-    title = "Task Rescheduled"
-    message = f"'{task_title}' moved from {old_date} to {new_date}."
-    if reason:
-        message += f" Reason: {reason}"
-    return notify(title, message)
+    t = "Task Rescheduled"
+    msg = "'" + str(task_title) + "' moved from " + str(old_date) + " to " + str(new_date) + "."
+    if reason != "":
+        msg = msg + " Reason: " + str(reason)
+    return notify(t, msg)
 
 
 def notify_unresolved(task_title, reason):
-    """Notify the user that a task could NOT be automatically rescheduled."""
-    title = "Action Needed: Task Unresolved"
-    message = f"'{task_title}' could not be rescheduled automatically. {reason}"
-    return notify(title, message)
+    t = "Action Needed: Task Unresolved"
+    msg = "'" + str(task_title) + "' could not be rescheduled automatically. " + str(reason)
+    return notify(t, msg)
 
 
 def notify_good_window(dates):
-    """Notify the user about upcoming favorable outdoor windows."""
-    if not dates:
-        return None
-    title = "Good Outdoor Weather Ahead"
-    message = f"Favorable outdoor conditions expected on: {', '.join(dates)}"
-    return notify(title, message)
+    if len(dates) == 0: return None
+    t = "Good Outdoor Weather Ahead"
+    
+    # format dates into string manually
+    dates_str = ""
+    for d in dates:
+        dates_str = dates_str + str(d) + ", "
+    dates_str = dates_str[:-2]
+    
+    msg = "Favorable outdoor conditions expected on: " + dates_str
+    return notify(t, msg)
 
 
 def notify_planning_summary(summary):
-    """
-    Convenience wrapper: takes the dict returned by
-    planner.run_planning_cycle() and fires the appropriate
-    notifications for every rescheduled/unresolved task.
-    """
-    outcomes = []
-    for item in summary.get("rescheduled", []):
-        outcomes.append(notify_reschedule(
-            item["title"], item["old_date"], item["new_date"]
-        ))
-    for item in summary.get("unresolved", []):
-        outcomes.append(notify_unresolved(item["title"], item["reason"]))
-    return outcomes
+    res_list = []
+    
+    # check rescheduled tasks
+    if "rescheduled" in summary:
+        for item in summary["rescheduled"]:
+            name = item["title"]
+            o = item["old_date"]
+            n = item["new_date"]
+            res_list.append(notify_reschedule(name, o, n))
+
+    # check unresolved tasks
+    if "unresolved" in summary:
+        for item in summary["unresolved"]:
+            name = item["title"]
+            r = item["reason"]
+            res_list.append(notify_unresolved(name, r))
+
+    return res_list
 
 
 if __name__ == "__main__":
-    import sys
-
-    if "--test" in sys.argv:
-        print("Sending test notification...")
-        result = notify("Weather Planner Test", "This is a test notification.")
-        print(f"  Desktop: {'sent' if result['desktop'] else 'not available/failed'}")
-        if _email_configured():
-            print(f"  Email: {'sent' if result['email'] else 'failed - ' + str(result['email_error'])}")
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        print("Running notification system test...")
+        out = notify("Weather Planner Test", "This is a test notification.")
+        print("Desktop notification sent:", out["desktop"])
+        
+        if HOST and USER and PASS and TO:
+            print("Email notification sent:", out["email"])
+            if out["email_error"]:
+                print("Email Error:", out["email_error"])
         else:
-            print("  Email: not configured (set SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFY_EMAIL_TO in .env)")
+            print("Email not setup in .env file.")
     else:
         print("Usage: python notifier.py --test")

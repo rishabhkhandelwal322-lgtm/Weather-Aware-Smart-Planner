@@ -1,23 +1,16 @@
 """
 dashboard.py
--------------
-Streamlit front end for the Weather-Aware Smart Planner. Ties
-together every other module into one interactive UI:
+Streamlit UI for Weather Aware Smart Planner project.
+Created for final semester project / mini project presentation.
 
-  - Sidebar: set location, run the planning cycle, trigger notifications
-  - Tasks tab: add/list/complete/delete tasks
-  - Forecast tab: 5-day forecast + ML-predicted good-outdoor-day probability
-  - Analytics tab: completion-rate and weather-correlation charts
-  - Activity Log tab: recent create/reschedule/complete history
-
-Run with:
-    streamlit run dashboard.py
+Run using command:
+streamlit run dashboard.py
 """
 
 from datetime import datetime
-
 import streamlit as st
 
+# Custom modules imports
 import storage
 import task_manager
 import weather_fetcher
@@ -25,278 +18,310 @@ import planner
 import analytics
 import notifier
 
+# checking if ml predictor model module is present
 try:
     import predictor
-    HAS_PREDICTOR = True
-except ImportError as e:
-    HAS_PREDICTOR = False
-    _predictor_import_error = str(e)
+    predictor_available = True
+except Exception as err:
+    predictor_available = False
+    import_err_msg = str(err)
 
+# initialize sqlite database
 storage.init_db()
 
-st.set_page_config(page_title="Weather-Aware Smart Planner", page_icon="⛅", layout="wide")
+# setting up streamlit page
+st.set_page_config(
+    page_title="Weather-Aware Smart Planner", 
+    page_icon="⛅", 
+    layout="wide"
+)
 
-
-# ------------------------------------------------------------- sidebar ----
+# ==========================================
+# SIDEBAR SECTION
+# ==========================================
 
 st.sidebar.title("⛅ Smart Planner")
-location = st.sidebar.text_input("Location", value="Ashta,IN", help="Format: City,CountryCode")
+user_location = st.sidebar.text_input(
+    "Location", 
+    value="Ashta,IN", 
+    help="Format: City,CountryCode (e.g. Ashta,IN)"
+)
 
+# Trigger manual planning cycle button
 if st.sidebar.button("🔄 Run Planning Cycle", use_container_width=True):
     try:
-        with st.spinner("Fetching forecast and checking tasks..."):
-            summary = planner.run_planning_cycle(location)
-            notifier.notify_planning_summary(summary)
+        with st.spinner("Fetching weather forecast and updating task schedule..."):
+            plan_summary = planner.run_planning_cycle(user_location)
+            notifier.notify_planning_summary(plan_summary)
+            
+        chk_count = plan_summary['checked']
+        resched_count = len(plan_summary['rescheduled'])
+        unres_count = len(plan_summary['unresolved'])
+        
         st.sidebar.success(
-            f"Checked {summary['checked']} outdoor task(s). "
-            f"Rescheduled {len(summary['rescheduled'])}, "
-            f"{len(summary['unresolved'])} unresolved."
+            f"Done! Checked {chk_count} outdoor task(s). "
+            f"Rescheduled {resched_count}, "
+            f"{unres_count} remaining unresolved."
         )
-    except weather_fetcher.WeatherFetchError as e:
-        st.sidebar.error(f"Weather fetch failed: {e}")
+    except weather_fetcher.WeatherFetchError as weather_err:
+        st.sidebar.error(f"Weather Fetch Error: {weather_err}")
 
 st.sidebar.markdown("---")
 st.sidebar.caption(
-    "Tip: if you don't have an API key set up yet, use the "
-    "**Manual Forecast Entry** panel in the Forecast tab, or run "
-    "`python seed_demo_data.py` from the terminal for sample data."
+    "Note: If API key is not configured, please use Manual Forecast Entry "
+    "or run 'python seed_demo_data.py' via terminal to load test data."
 )
 
+# ==========================================
+# MAIN DASHBOARD TABS
+# ==========================================
 
-# --------------------------------------------------------------- tabs ----
-
-tab_tasks, tab_forecast, tab_analytics, tab_log = st.tabs(
+task_tab, forecast_tab, analytics_tab, log_tab = st.tabs(
     ["📋 Tasks", "🌦️ Forecast", "📊 Analytics", "🕒 Activity Log"]
 )
 
+# ------------------------------------------
+# TAB 1: TASKS MANAGEMENT
+# ------------------------------------------
+with task_tab:
+    st.subheader("Add New Task")
+    
+    with st.form("task_creation_form", clear_on_submit=True):
+        c1, c2, c3 = st.columns(3)
+        t_title = c1.text_input("Title")
+        t_type = c2.selectbox("Type", task_manager.VALID_TYPES)
+        t_priority = c3.selectbox("Priority", task_manager.VALID_PRIORITIES, index=1)
 
-# ----------------------------------------------------------- Tasks tab ----
+        c4, c5 = st.columns(2)
+        t_date = c4.date_input("Scheduled Date", value=datetime.now())
+        t_deadline = c5.date_input("Deadline (Optional)", value=None)
 
-with tab_tasks:
-    st.subheader("Add a Task")
-    with st.form("add_task_form", clear_on_submit=True):
-        col1, col2, col3 = st.columns(3)
-        title = col1.text_input("Title")
-        task_type = col2.selectbox("Type", task_manager.VALID_TYPES)
-        priority = col3.selectbox("Priority", task_manager.VALID_PRIORITIES, index=1)
+        t_desc = st.text_area("Description (Optional)", height=68)
+        btn_submit = st.form_submit_button("Add Task", use_container_width=True)
 
-        col4, col5 = st.columns(2)
-        scheduled_date = col4.date_input("Scheduled date", value=datetime.now())
-        deadline = col5.date_input("Deadline (optional)", value=None)
-
-        description = st.text_area("Description (optional)", height=68)
-        submitted = st.form_submit_button("Add Task", use_container_width=True)
-
-        if submitted:
+        if btn_submit:
             try:
                 task_manager.create_task(
-                    title=title,
-                    task_type=task_type,
-                    description=description,
-                    priority=priority,
-                    deadline=deadline.isoformat() if deadline else None,
-                    scheduled_date=scheduled_date.isoformat() if scheduled_date else None,
+                    title=t_title,
+                    task_type=t_type,
+                    description=t_desc,
+                    priority=t_priority,
+                    deadline=t_deadline.isoformat() if t_deadline else None,
+                    scheduled_date=t_date.isoformat() if t_date else None,
                 )
-                st.success(f"Added '{title}'.")
+                st.success(f"Task '{t_title}' added successfully!")
                 st.rerun()
-            except task_manager.ValidationError as e:
-                st.error(str(e))
+            except task_manager.ValidationError as val_err:
+                st.error(str(val_err))
 
     st.markdown("---")
-    st.subheader("Your Tasks")
+    st.subheader("Task List")
 
-    col_f1, col_f2 = st.columns(2)
-    status_filter = col_f1.selectbox(
-        "Filter by status", [None, "pending", "rescheduled", "completed", "cancelled"],
-        format_func=lambda x: "All" if x is None else x.capitalize(),
+    # Filter section
+    flt_col1, flt_col2 = st.columns(2)
+    sel_status = flt_col1.selectbox(
+        "Filter by Status", 
+        [None, "pending", "rescheduled", "completed", "cancelled"],
+        format_func=lambda item: "All" if item is None else str(item).capitalize()
     )
-    type_filter = col_f2.selectbox(
-        "Filter by type", [None, "outdoor", "indoor"],
-        format_func=lambda x: "All" if x is None else x.capitalize(),
+    sel_type = flt_col2.selectbox(
+        "Filter by Task Type", 
+        [None, "outdoor", "indoor"],
+        format_func=lambda item: "All" if item is None else str(item).capitalize()
     )
 
-    tasks = task_manager.list_tasks(status=status_filter, task_type=type_filter)
+    task_records = task_manager.list_tasks(status=sel_status, task_type=sel_type)
 
-    if not tasks:
-        st.info("No tasks match the current filters.")
+    if not task_records:
+        st.info("No tasks found matching criteria.")
     else:
-        for task in tasks:
-            cols = st.columns([4, 2, 2, 2, 1, 1])
-            cols[0].write(f"**{task['title']}**")
-            cols[1].write(task["task_type"])
-            cols[2].write(task["priority"])
-            cols[3].write(f"{task['status']} → {task['scheduled_date'] or '—'}")
+        for t in task_records:
+            row_cols = st.columns([4, 2, 2, 2, 1, 1])
+            row_cols[0].write(f"**{t['title']}**")
+            row_cols[1].write(t["task_type"])
+            row_cols[2].write(t["priority"])
+            
+            sch_date_str = t['scheduled_date'] if t['scheduled_date'] else '—'
+            row_cols[3].write(f"{t['status']} → {sch_date_str}")
 
-            if task["status"] != "completed":
-                if cols[4].button("✅", key=f"complete_{task['id']}", help="Mark complete"):
-                    task_manager.mark_complete(task["id"])
+            # Mark Complete Action
+            if t["status"] != "completed":
+                if row_cols[4].button("✅", key=f"btn_done_{t['id']}", help="Mark as Completed"):
+                    task_manager.mark_complete(t["id"])
                     st.rerun()
             else:
-                cols[4].write("✔️")
+                row_cols[4].write("✔️")
 
-            if cols[5].button("🗑️", key=f"delete_{task['id']}", help="Delete task"):
-                task_manager.remove_task(task["id"])
+            # Delete Action
+            if row_cols[5].button("🗑️", key=f"btn_del_{t['id']}", help="Delete Task"):
+                task_manager.remove_task(t["id"])
                 st.rerun()
 
-
-# --------------------------------------------------------- Forecast tab ----
-
-with tab_forecast:
-    st.subheader(f"5-Day Forecast — {location}")
+# ------------------------------------------
+# TAB 2: WEATHER FORECAST
+# ------------------------------------------
+with forecast_tab:
+    st.subheader(f"5-Day Weather Forecast — {user_location}")
 
     try:
-        forecast_days = weather_fetcher.get_5day_forecast(location)
-    except weather_fetcher.WeatherFetchError as e:
-        forecast_days = []
-        st.warning(f"Couldn't fetch live forecast: {e}. Showing cached data if available.")
+        weather_days = weather_fetcher.get_5day_forecast(user_location)
+    except weather_fetcher.WeatherFetchError as fetch_err:
+        weather_days = []
+        st.warning(f"Unable to fetch live weather data: {fetch_err}. Displaying offline/cached records.")
 
-    if not forecast_days:
-        st.info("No forecast data available yet for this location.")
+    if not weather_days:
+        st.info("No weather data available for this location.")
     else:
-        cols = st.columns(len(forecast_days))
-        for col, day in zip(cols, forecast_days):
+        grid_cols = st.columns(len(weather_days))
+        for col, day_data in zip(grid_cols, weather_days):
             with col:
-                st.markdown(f"**{day['forecast_date']}**")
-                st.write(f"{day['temperature_c']}°C")
-                st.write(day["condition"])
-                st.write(f"💨 {day['wind_speed_kph']} km/h")
-                st.write(f"🌧️ {day['rain_probability']:.0%}")
+                st.markdown(f"**{day_data['forecast_date']}**")
+                st.write(f"{day_data['temperature_c']}°C")
+                st.write(day_data["condition"])
+                st.write(f"💨 {day_data['wind_speed_kph']} km/h")
+                st.write(f"🌧️ {day_data['rain_probability']:.0%}")
 
-                if HAS_PREDICTOR:
+                if predictor_available:
                     try:
-                        prob = predictor.predict_for_forecast(day)
-                        st.progress(int(prob), text=f"{prob}% good outdoor day")
+                        outdoor_prob = predictor.predict_for_forecast(day_data)
+                        st.progress(int(outdoor_prob), text=f"{outdoor_prob}% suitable outdoor score")
                     except FileNotFoundError:
-                        pass  # model not trained yet; skip prediction silently
+                        # Model file is missing or not trained yet
+                        pass
 
         st.markdown("---")
-        st.subheader("Trends")
+        st.subheader("Weather Trends")
 
         try:
             import pandas as pd
-            trend_df = pd.DataFrame({
-                "Date": [d["forecast_date"] for d in forecast_days],
-                "Temperature (°C)": [d["temperature_c"] for d in forecast_days],
-                "Rain Probability (%)": [round(d["rain_probability"] * 100, 1) for d in forecast_days],
+            
+            dates_list = [d["forecast_date"] for d in weather_days]
+            temps_list = [d["temperature_c"] for d in weather_days]
+            rain_list = [round(d["rain_probability"] * 100, 1) for d in weather_days]
+
+            df_trends = pd.DataFrame({
+                "Date": dates_list,
+                "Temperature (°C)": temps_list,
+                "Rain Probability (%)": rain_list,
             }).set_index("Date")
 
-            tc1, tc2 = st.columns(2)
-            with tc1:
+            g_col1, g_col2 = st.columns(2)
+            with g_col1:
                 st.caption("Temperature Trend")
-                st.line_chart(trend_df["Temperature (°C)"])
-            with tc2:
-                st.caption("Precipitation Trend")
-                st.bar_chart(trend_df["Rain Probability (%)"])
-        except ImportError as e:
-            st.warning(
-                f"Trend charts need pandas, which couldn't be loaded on this machine ({e}). "
-                f"This is a local environment issue, not a project bug. Showing the raw values instead:"
-            )
-            table_md = "| Date | Temperature (°C) | Rain Probability (%) |\n|---|---|---|\n"
-            for d in forecast_days:
-                table_md += f"| {d['forecast_date']} | {d['temperature_c']} | {round(d['rain_probability'] * 100, 1)} |\n"
-            st.markdown(table_md)
+                st.line_chart(df_trends["Temperature (°C)"])
+            with g_col2:
+                st.caption("Precipitation Probability Trend")
+                st.bar_chart(df_trends["Rain Probability (%)"])
+                
+        except ImportError as pd_err:
+            st.warning(f"Pandas import failed ({pd_err}). Showing tabular fallback:")
+            
+            raw_table = "| Date | Temperature (°C) | Rain Probability (%) |\n|---|---|---|\n"
+            for d in weather_days:
+                raw_table += f"| {d['forecast_date']} | {d['temperature_c']} | {round(d['rain_probability'] * 100, 1)} |\n"
+            st.markdown(raw_table)
 
     st.markdown("---")
-    st.subheader("Manual Forecast Entry")
-    st.caption("Add or overwrite a forecast without calling the API.")
+    st.subheader("Manual Weather Entry")
+    st.caption("Manually input forecast data to test planner offline.")
 
-    with st.form("manual_forecast_form", clear_on_submit=True):
-        c1, c2, c3, c4 = st.columns(4)
-        m_date = c1.date_input("Date")
-        m_temp = c2.number_input("Temp (°C)", value=28.0)
-        m_condition = c3.selectbox("Condition", weather_fetcher.VALID_CONDITIONS)
-        m_wind = c4.number_input("Wind (km/h)", value=10.0, min_value=0.0)
-        m_rain = st.slider("Rain probability", 0.0, 1.0, 0.2)
+    with st.form("manual_weather_entry_form", clear_on_submit=True):
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        m_date = mc1.date_input("Date")
+        m_temp = mc2.number_input("Temp (°C)", value=28.0)
+        m_cond = mc3.selectbox("Condition", weather_fetcher.VALID_CONDITIONS)
+        m_wind = mc4.number_input("Wind Speed (km/h)", value=10.0, min_value=0.0)
+        m_rain = st.slider("Rain Probability", 0.0, 1.0, 0.2)
 
-        if st.form_submit_button("Save Forecast", use_container_width=True):
+        btn_save_weather = st.form_submit_button("Save Forecast", use_container_width=True)
+        if btn_save_weather:
             try:
                 weather_fetcher.add_manual_forecast(
-                    location=location,
+                    location=user_location,
                     forecast_date=m_date.isoformat(),
                     temperature_c=m_temp,
-                    condition=m_condition,
+                    condition=m_cond,
                     wind_speed_kph=m_wind,
                     rain_probability=m_rain,
                 )
-                st.success(f"Saved forecast for {m_date.isoformat()}.")
+                st.success(f"Forecast entry saved for {m_date.isoformat()}.")
                 st.rerun()
-            except ValueError as e:
-                st.error(str(e))
+            except ValueError as v_err:
+                st.error(str(v_err))
 
-
-# -------------------------------------------------------- Analytics tab ----
-
-with tab_analytics:
-    st.subheader("Productivity Analytics")
+# ------------------------------------------
+# TAB 3: ANALYTICS & CHARTS
+# ------------------------------------------
+with analytics_tab:
+    st.subheader("Productivity & Task Analytics")
 
     if st.button("Generate / Refresh Charts"):
-        with st.spinner("Crunching numbers..."):
-            report = analytics.generate_full_report(location)
-        st.session_state["analytics_report"] = report
+        with st.spinner("Generating performance reports..."):
+            analytics_data = analytics.generate_full_report(user_location)
+        st.session_state["analytics_report"] = analytics_data
 
-    report = st.session_state.get("analytics_report")
+    current_report = st.session_state.get("analytics_report")
 
-    if not report:
-        st.info("Click 'Generate / Refresh Charts' to build the latest analytics.")
+    if not current_report:
+        st.info("Click the button above to render analytics charts.")
     else:
-        stats = report["overall_stats"]
+        tot_stats = current_report["overall_stats"]
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total Tasks", stats["total"])
-        m2.metric("Completed", stats["completed"])
-        m3.metric("Pending", stats["pending"])
-        m4.metric("Completion Rate", f"{stats['completion_rate_pct']}%")
+        m1.metric("Total Tasks", tot_stats["total"])
+        m2.metric("Completed", tot_stats["completed"])
+        m3.metric("Pending", tot_stats["pending"])
+        m4.metric("Completion Rate", f"{tot_stats['completion_rate_pct']}%")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            if report["charts"]["completion_by_type"]:
-                st.image(report["charts"]["completion_by_type"], use_container_width=True)
+        ch_col1, ch_col2 = st.columns(2)
+        with ch_col1:
+            if current_report["charts"]["completion_by_type"]:
+                st.image(current_report["charts"]["completion_by_type"], use_container_width=True)
             else:
-                st.info("No task data yet to chart.")
-        with c2:
-            if report["charts"]["weather_correlation"]:
-                st.image(report["charts"]["weather_correlation"], use_container_width=True)
+                st.info("Insufficient data for task type chart.")
+        with ch_col2:
+            if current_report["charts"]["weather_correlation"]:
+                st.image(current_report["charts"]["weather_correlation"], use_container_width=True)
             else:
-                st.info("No weather-correlated task data yet to chart.")
+                st.info("Insufficient data for weather correlation chart.")
 
-        if report["charts"]["status_breakdown"]:
-            st.image(report["charts"]["status_breakdown"], width=400)
+        if current_report["charts"]["status_breakdown"]:
+            st.image(current_report["charts"]["status_breakdown"], width=400)
         else:
-            st.info("No completed/pending/rescheduled/cancelled tasks yet to chart status breakdown.")
+            st.info("No status breakdown data available.")
 
     st.markdown("---")
     st.subheader("Weather Variable Correlation Heatmap")
-    st.caption("Correlation between temperature, rain probability, wind speed, month, and the "
-               "'good outdoor day' label, computed from the same data the ML model was trained on. "
-               "This is independent of your task data.")
+    st.caption("Correlation matrix showing relations between temperature, rain, wind speed, and weather feasibility ratings.")
 
-    if not HAS_PREDICTOR:
-        st.warning(
-            f"This feature needs scikit-learn/pandas, which couldn't be loaded on this machine "
-            f"({_predictor_import_error}). This is a local environment issue, not a project bug."
-        )
+    if not predictor_available:
+        st.warning(f"ML predictor requirements missing ({_predictor_import_error}). Unable to generate heatmap.")
     else:
         try:
             import plotly.express as px
-            corr = analytics.get_weather_correlation_matrix()
-            fig = px.imshow(
-                corr, text_auto=".2f", color_continuous_scale="RdBu_r", zmin=-1, zmax=1,
-                aspect="auto",
+            
+            corr_data = analytics.get_weather_correlation_matrix()
+            heat_fig = px.imshow(
+                corr_data, 
+                text_auto=".2f", 
+                color_continuous_scale="RdBu_r", 
+                zmin=-1, 
+                zmax=1,
+                aspect="auto"
             )
-            fig.update_layout(height=450)
-            st.plotly_chart(fig, use_container_width=True)
-        except ImportError as e:
-            st.warning(f"Couldn't load the correlation heatmap: {e}")
+            heat_fig.update_layout(height=450)
+            st.plotly_chart(heat_fig, use_container_width=True)
+        except ImportError as px_err:
+            st.warning(f"Plotly library not available: {px_err}")
 
+# ------------------------------------------
+# TAB 4: SYSTEM LOGS
+# ------------------------------------------
+with log_tab:
+    st.subheader("System Activity Log")
+    db_logs = storage.get_logs(limit=30)
 
-# ------------------------------------------------------ Activity Log tab ----
-
-with tab_log:
-    st.subheader("Recent Activity")
-    logs = storage.get_logs(limit=30)
-
-    if not logs:
-        st.info("No activity logged yet.")
+    if not db_logs:
+        st.info("No recent logs found.")
     else:
-        for log in logs:
-            st.write(f"🕒 `{log['timestamp']}` — **{log['action']}** — {log['details']}")
+        for entry in db_logs:
+            st.write(f"🕒 `{entry['timestamp']}` — **{entry['action']}** — {entry['details']}")
