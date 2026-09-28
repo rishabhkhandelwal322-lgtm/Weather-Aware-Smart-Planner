@@ -20,7 +20,7 @@ import task_manager
 @pytest.fixture(autouse=True)
 def temp_db(tmp_path, monkeypatch):
     """Point storage at a fresh temporary database for every test."""
-    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test_planner.db")
+    monkeypatch.setattr(storage._DB, "db_path", str(tmp_path / "test_planner.db"))
     storage.init_db()
     yield
 

@@ -73,6 +73,13 @@ def run_planning_cycle(target_loc):
     return stats
 
 
+
+
+
+
+
+
+
 def _find_next_good_day(forecast_lookup, current_date):
     ordered_dates = sorted(list(forecast_lookup.keys()))
     
@@ -141,3 +148,39 @@ if __name__ == "__main__":
 
     open_windows = find_upcoming_good_windows(loc_arg)
     print("\nGood outdoor windows in the next 5 days:", open_windows)
+
+
+
+def _is_bad_weather_day(forecast, threshold=0.5):
+    """
+    Returns True if rain_probability in forecast meets or exceeds threshold.
+    Missing or empty forecast defaults to False (good day).
+    """
+    if not forecast:
+        return False
+    return forecast.get("rain_probability", 0.0) >= threshold
+
+
+
+
+
+
+def _find_next_good_day(forecast_by_date, after_date=None, current_date=None, threshold=0.5):
+    """
+    Finds the first date in forecast_by_date after the specified start date 
+    where weather is not considered bad.
+    """
+    # Fallback to current_date if after_date is not passed explicitly
+    start_date = after_date if after_date is not None else current_date
+
+    sorted_dates = sorted(forecast_by_date.keys())
+    
+    for date in sorted_dates:
+        if start_date and date <= start_date:
+            continue
+            
+        forecast = forecast_by_date[date]
+        if not _is_bad_weather_day(forecast, threshold=threshold):
+            return date
+
+    return None
